@@ -1,0 +1,111 @@
+# GraphQL React Event Booking
+
+A GraphQL API server for event booking built with Express.js and GraphQL.
+
+## Features
+
+- GraphQL API endpoint with GraphiQL interface
+- Query events
+- Create new events via mutations
+- Express.js backend server
+
+## Prerequisites
+
+- Node.js (v12 or higher)
+- npm or yarn
+
+## Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/ebk1996/graphql_react_event_booking.git
+cd graphql_react_event_booking
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+## Usage
+
+Start the development server:
+
+```bash
+npm start
+```
+
+The server will start on `http://localhost:3000`.
+
+Access the GraphiQL interface at `http://localhost:3000/graphql`.
+
+## GraphQL Schema
+
+### Types
+
+```graphql
+type RootQuery {
+  events: [String!]!
+}
+
+type RootMutation {
+  createEvent(name: String): String
+}
+```
+
+### Example Queries
+
+**Fetch all events:**
+
+```graphql
+query {
+  events
+}
+```
+
+**Create a new event:**
+
+```graphql
+mutation {
+  createEvent(name: "Conference 2025")
+}
+```
+
+## Project Structure
+
+```
+graphql_react_event_booking/
+├── app.js          # Main application file with GraphQL setup
+├── package.json    # Project dependencies and scripts
+└── README.md       # Project documentation
+```
+
+## Dependencies
+
+- **express** - Web framework for Node.js
+- **express-graphql** - GraphQL HTTP server middleware
+- **graphql** - GraphQL implementation
+- **body-parser** - Request body parsing middleware
+
+## API Endpoint
+
+- `POST /graphql` - GraphQL API endpoint
+- `GET /graphql` - GraphiQL interactive interface
+
+## Development
+
+The GraphQL server is configured with:
+
+- GraphiQL enabled for easy testing and development
+- Body parser for JSON request handling
+- Express middleware setup
+
+## License
+
+MIT
+
+## Author
+
+ebk1996
