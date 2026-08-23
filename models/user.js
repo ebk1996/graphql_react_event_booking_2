@@ -17,6 +17,12 @@ const userSchema = new Schema({
     trim: true,
     default: '',
   },
+  zipCode: {
+    type: String,
+    required: true,
+    trim: true,
+    match: /^\d{5}$/,
+  },
   email: {
     type: String,
     required: true,

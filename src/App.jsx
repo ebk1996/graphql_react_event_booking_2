@@ -91,7 +91,8 @@ const notificationsQuery = `query {
     }
   }
 }`
-const emptyEvent = { title: '', description: '', price: '', date: '' }
+const emptyEvent = { title: '', description: '', price: '', date: '', zipCode: '',
+}
 
 // <input type="datetime-local"> wants a local `YYYY-MM-DDTHH:mm`, not the stored ISO string.
 const toLocalInput = (iso) => {
@@ -116,6 +117,7 @@ function App() {
     firstName: '',
     lastName: '',
     phone: '',
+    zipCode: '',
     email: '',
     password: '',
   })
@@ -215,6 +217,7 @@ function App() {
         firstName: '',
         lastName: '',
         phone: '',
+        zipCode: '',
         email: '',
         password: '',
       })
@@ -343,7 +346,7 @@ function App() {
 
   return <main>
     <nav>
-      <span className="brand">Gather</span>
+      <span className="brand">LINK</span>
 
       <a href="#events">Events</a>
 
@@ -480,8 +483,16 @@ function App() {
     <section className="host" id="host">
       <div><p className="eyebrow">MAKE IT HAPPEN</p><h2>Host your next great gathering.</h2><p>Create an account, then log in to publish events and accept bookings.</p></div>
       <div className="forms">
-        <form onSubmit={register}><h3>Create an account</h3><input type="text" placeholder="First name" value={account.firstName} onChange={e => setAccount({ ...account, firstName: e.target.value })} /><input type="text" placeholder="Last name" value={account.lastName} onChange={e => setAccount({ ...account, lastName: e.target.value })} /><input type="tel" placeholder="Phone number" value={account.phone} onChange={e => setAccount({ ...account, phone: e.target.value })} /><input type="email" placeholder="Email address" value={account.email} onChange={e => setAccount({ ...account, email: e.target.value })} required /><input type="password" placeholder="Password (6+ characters)" minLength="6" value={account.password} onChange={e => setAccount({ ...account, password: e.target.value })} required /><button>Create account</button></form>
-        <form onSubmit={saveEvent}><h3>{editingId ? 'Edit your event' : 'Publish an event'}</h3><input placeholder="Event title" value={event.title} onChange={e => setEvent({ ...event, title: e.target.value })} required /><textarea placeholder="Tell people what to expect" value={event.description} onChange={e => setEvent({ ...event, description: e.target.value })} required /><div className="split"><input type="number" min="0" step="0.01" placeholder="Price" value={event.price} onChange={e => setEvent({ ...event, price: e.target.value })} required /><input type="datetime-local" value={event.date} onChange={e => setEvent({ ...event, date: e.target.value })} required /></div><button>{editingId ? 'Save changes' : 'Publish event'}</button>{editingId && <button type="button" className="text-button" onClick={cancelEdit}>Cancel edit</button>}</form>
+        <form onSubmit={register}><h3>Create an account</h3><input type="text" placeholder="First name" value={account.firstName} onChange={e => setAccount({ ...account, firstName: e.target.value })} /><input type="text" placeholder="Last name" value={account.lastName} onChange={e => setAccount({ ...account, lastName: e.target.value })} /><input type="tel" placeholder="Phone number" value={account.phone} onChange={e => setAccount({ ...account, phone: e.target.value })} />
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength="5"
+          placeholder="ZIP Code"
+          value={account.zipCode}
+          onChange={(e) => setAccount({ ...account, zipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
+        /><input type="email" placeholder="Email address" value={account.email} onChange={e => setAccount({ ...account, email: e.target.value })} required /><input type="password" placeholder="Password (6+ characters)" minLength="6" value={account.password} onChange={e => setAccount({ ...account, password: e.target.value })} required /><button>Create account</button></form>
+        <form onSubmit={saveEvent}><h3>{editingId ? 'Edit your event' : 'Publish an event'}</h3><input type="text" inputMode="numeric" maxLength="5" placeholder="Event ZIP Code" value={event.zipCode} onChange={e => setEvent({ ...event, zipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })} required /><input placeholder="Event title" value={event.title} onChange={e => setEvent({ ...event, title: e.target.value })} required /><textarea placeholder="Tell people what to expect" value={event.description} onChange={e => setEvent({ ...event, description: e.target.value })} required /><div className="split"><input type="number" min="0" step="0.01" placeholder="Price" value={event.price} onChange={e => setEvent({ ...event, price: e.target.value })} required /><input type="datetime-local" value={event.date} onChange={e => setEvent({ ...event, date: e.target.value })} required /></div><button>{editingId ? 'Save changes' : 'Publish event'}</button>{editingId && <button type="button" className="text-button" onClick={cancelEdit}>Cancel edit</button>}</form>
       </div>
     </section>
   </main>

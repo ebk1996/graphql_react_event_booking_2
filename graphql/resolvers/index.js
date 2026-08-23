@@ -91,9 +91,17 @@ const transformBooking = (booking) => ({
 });
 
 module.exports = {
-    events: async () => {
+    events: async (_args, context) => {
         try {
-            const events = await Event.find();
+            const currentUser = await requireAuth(
+                context,
+                'Please register or log in to see events.'
+            );
+
+            const events = await Event.find({
+                zipCode: currentUser.zipCode,
+            }).sort({ date: 1 });
+
             return events.map((event) => {
                 return transformEvent(event);
             });
@@ -178,11 +186,18 @@ module.exports = {
     createEvent: async (args, context) => {
         try {
             const creator = await requireAuth(context, 'Please log in before creating an event.');
+            const zipCode = String(args.eventInput.zipCode || '').trim();
+
+            if (!/^\d{5}$/.test(zipCode)) {
+                throw new Error('ZIP code must be exactly 5 digits');
+            }
+
             const event = new Event({
                 title: args.eventInput.title,
                 description: args.eventInput.description,
                 price: +args.eventInput.price,
                 date: new Date(args.eventInput.date),
+                zipCode,
                 creator: creator._id,
             });
             const result = await event.save();
@@ -242,6 +257,12 @@ module.exports = {
             const firstName = String(args.userInput.firstName || '').trim();
             const lastName = String(args.userInput.lastName || '').trim();
             const phone = String(args.userInput.phone || '').trim();
+            const zipCode = String(args.userInput.zipCode || '').trim();
+
+            if (!/^\d{5}$/.test(zipCode)) {
+                throw new Error('ZIP code must be exactly 5 digits');
+            }
+
             const email = String(args.userInput.email || '').trim().toLowerCase();
             if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
                 throw new Error('Invalid email');
@@ -259,6 +280,7 @@ module.exports = {
                 firstName,
                 lastName,
                 phone,
+                zipCode,
                 email,
                 password: hashedPassword,
             });

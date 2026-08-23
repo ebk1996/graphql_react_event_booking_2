@@ -18,6 +18,12 @@ const eventSchema = new Schema({
     type: Date,
     required: true,
   },
+  zipCode: {
+    type: String,
+    required: true,
+    trim: true,
+    match: /^\d{5}$/,
+  },
   creator: {
     type: Schema.Types.ObjectId,
     ref: 'User',

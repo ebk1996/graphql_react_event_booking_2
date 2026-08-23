@@ -33,6 +33,7 @@ module.exports = buildSchema(`
         description: String!
         price: Float!
         date: String!
+        zipCode: String!
         creator: User!
     }
 
@@ -41,6 +42,7 @@ module.exports = buildSchema(`
         firstName: String
         lastName: String
         phone: String
+        zipCode: String!
         email: String!
         password: String
         createdEvents: [Event!]
@@ -57,6 +59,7 @@ module.exports = buildSchema(`
         firstName: String
         lastName: String
         phone: String
+        zipCode: String!
         email: String!
         password: String!
     }
@@ -66,6 +69,7 @@ module.exports = buildSchema(`
         description: String!
         price: Float!
         date: String!
+	zipCode: String!
     }
 
     type RootQuery {
