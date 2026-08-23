@@ -2,12 +2,78 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="chrome" />
-    <meta name="description" content="A GraphQL, Express, React, Event Booking System" />
-    <title>graphql_react_event_booking_system</title>
-  </head>
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <title>Find Events in Your ZIP Code | College, Greek Life & Local Events</title>
+
+    <meta
+      name="description"
+      content="Find events in your ZIP code. Discover college events, fraternity and sorority events, student organization activities, clubs, parties, meetups, and local events near you."
+    />
+
+    <meta
+      name="keywords"
+      content="events near me, events in my zip code, find events, local events, college events, university events, fraternity events, sorority events, Greek life events, student events, student organizations, college clubs, local clubs, campus events"
+    />
+
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="googlebot" content="index, follow" />
+
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Find Events in Your ZIP Code"
+    />
+    <meta
+      property="og:description"
+      content="Discover college events, fraternity and sorority events, clubs, student organizations, and local events near you."
+    />
+    <meta property="og:site_name" content="Event Booking" />
+
+    <meta
+      name="twitter:card"
+      content="summary_large_image"
+    />
+    <meta
+      name="twitter:title"
+      content="Find Events in Your ZIP Code"
+    />
+    <meta
+      name="twitter:description"
+      content="Find college, Greek life, club, student organization, and local events near you."
+    />
+
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Event Booking",
+      "description": "Find events in your ZIP code, including college events, fraternity and sorority events, student organizations, clubs, and local events.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "/?zip={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Event Booking",
+      "description": "A local event discovery platform for communities, colleges, fraternities, sororities, clubs, and student organizations."
+    }
+    </script>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="canonical" href="https://events360.net/" />
+</head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
