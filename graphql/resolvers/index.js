@@ -182,6 +182,9 @@ module.exports = {
     },
     createUser: async (args) => {
         try {
+            const firstName = String(args.userInput.firstName || '').trim();
+            const lastName = String(args.userInput.lastName || '').trim();
+            const phone = String(args.userInput.phone || '').trim();
             const email = String(args.userInput.email || '').trim().toLowerCase();
             if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
                 throw new Error('Invalid email');
@@ -196,6 +199,9 @@ module.exports = {
             }
             const hashedPassword = await bcrypt.hash(passwordRaw, 12);
             const user = new User({
+                firstName,
+                lastName,
+                phone,
                 email,
                 password: hashedPassword,
             });
