@@ -15,7 +15,7 @@ const request = async (query, variables = {}) => {
   const headers = { 'Content-Type': 'application/json' }
   const session = readSession()
   if (session?.token) headers.Authorization = `Bearer ${session.token}`
-  const response = await fetch(import.meta.env.VITE_API_URL || '/graphql', {
+  const response = await fetch('/graphql', {
     method: 'POST',
     headers,
     body: JSON.stringify({ query, variables }),
@@ -106,7 +106,6 @@ function App() {
   const [bookings, setBookings] = useState([])
   const [hostBookings, setHostBookings] = useState([])
   const [notifications, setNotifications] = useState([])
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
   const [bookingsLoading, setBookingsLoading] = useState(false)
@@ -161,16 +160,6 @@ function App() {
   }
   }
 
-  const formatNotificationDate = (date) => {
-    const d = new Date(date)
-    return d.toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
-
   const loadNotifications = async () => {
   if (!currentUser) {
     setNotifications([])
@@ -187,6 +176,70 @@ function App() {
   } finally {
     setNotificationsLoading(false)
   }
+  }
+
+  const loadHostBookings = async () => {
+    if (!currentUser) return
+
+    try {
+      const data = await request(`
+        query {
+          hostBookings {
+            _id
+            createdAt
+            event {
+              _id
+              title
+              date
+            }
+            user {
+              _id
+              firstName
+              lastName
+              email
+              phone
+            }
+          }
+        }
+      `)
+
+      setHostBookings(data.hostBookings)
+    } catch (error) {
+      setNotice(`Could not load event bookings: ${error.message}`)
+    }
+  }
+
+  const loadNotifications = async () => {
+    if (!currentUser) return
+
+    try {
+      const data = await request(`
+        query {
+          notifications {
+            _id
+            type
+            message
+            createdAt
+            event {
+              _id
+              title
+              date
+            }
+            user {
+              _id
+              firstName
+              lastName
+              email
+              phone
+            }
+          }
+        }
+      `)
+
+      setNotifications(data.notifications)
+    } catch (error) {
+      setNotice(`Could not load notifications: ${error.message}`)
+    }
   }
 
   useEffect(() => { loadEvents() }, [])
@@ -344,106 +397,10 @@ function App() {
   return <main>
     <nav>
       <span className="brand">Gather</span>
-
       <a href="#events">Events</a>
-
       {currentUser && <a href="#bookings">My bookings</a>}
-
       <a href="#host">Host an event</a>
-
-      {currentUser && (
-        <div className="notification-wrapper">
-          <button
-            className="notification-button"
-            onClick={() => setNotificationsOpen(open => !open)}
-            aria-label="Notifications"
-            aria-expanded={notificationsOpen}
-          >
-            <span className="notification-icon">♧</span>
-            <span>Notifications</span>
-
-            {notifications.length > 0 && (
-              <span className="notification-count">
-                {notifications.length}
-              </span>
-            )}
-          </button>
-
-          {notificationsOpen && (
-            <div className="notification-panel">
-              <div className="notification-header">
-                <div>
-                  <p className="eyebrow">UPDATES</p>
-                  <h3>Notifications</h3>
-                </div>
-
-                <button
-                  className="text-button"
-                  onClick={loadNotifications}
-                  disabled={notificationsLoading}
-                >
-                  {notificationsLoading ? 'Refreshing…' : 'Refresh'}
-                </button>
-              </div>
-
-              {notificationsLoading ? (
-                <div className="notification-empty">
-                  <p>Loading notifications…</p>
-                </div>
-              ) : notifications.length ? (
-                <div className="notification-list">
-                  {notifications.map(notification => (
-                    <article
-                      className="notification-item"
-                      key={notification._id}
-                    >
-                      <div className="notification-dot" />
-
-                      <div className="notification-content">
-                        <p>{notification.message}</p>
-
-                        <small>
-                          {formatNotificationDate(notification.createdAt)}
-                        </small>
-
-                        {notification.event && (
-                          <span className="notification-event">
-                            {notification.event.title}
-                          </span>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="notification-empty">
-                  <div className="notification-empty-icon">✓</div>
-                  <h4>You're all caught up</h4>
-                  <p>
-                    New booking and event updates will appear here.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {currentUser ? (
-        <>
-          <span className="nav-user">{currentUser.email}</span>
-          <button className="nav-auth" onClick={logout}>
-            Log out
-          </button>
-        </>
-      ) : (
-        <button
-          className="nav-auth"
-          onClick={() => setLoginOpen(true)}
-        >
-          Log in
-        </button>
-      )}
+      {currentUser ? <><span className="nav-user">{currentUser.email}</span><button className="nav-auth" onClick={logout}>Log out</button></> : <button className="nav-auth" onClick={() => setLoginOpen(true)}>Log in</button>}
     </nav>
 
     <header>

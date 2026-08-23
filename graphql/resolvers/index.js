@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const Event = require('../../models/event');
 const User = require('../../models/user');
 const Booking = require('../../models/booking');
+const Notification = require('../../models/notification');
 const { isValidObjectId, ensureValidObjectId, ensureOwner } = require('./helpers');
 const { createTransformEvent } = require('./transform');
 const { jwtSecret, TOKEN_EXPIRATION_HOURS } = require('../../config/auth');
@@ -109,6 +110,62 @@ module.exports = {
         } catch (err) {
             throw err;
         }
+    },
+    hostBookings: async (_args, context) => {
+    try {
+        const host = await requireAuth(
+            context,
+            'Please log in to see your event bookings.'
+        );
+
+        const events = await Event.find({
+            creator: host._id,
+        }).select('_id');
+
+        const eventIds = events.map((event) => event._id);
+
+        const bookings = await Booking.find({
+            event: { $in: eventIds },
+        }).sort({ createdAt: -1 });
+
+        return bookings.map(transformBooking);
+    } catch (err) {
+        throw err;
+    }
+    },
+    notifications: async (_args, context) => {
+    try {
+        const host = await requireAuth(
+            context,
+            'Please log in to see your notifications.'
+        );
+
+        const notifications = await Notification.find({
+            recipient: host._id,
+        }).sort({ createdAt: -1 });
+
+        return notifications.map((notification) => ({
+            ...notification._doc,
+            _id: notification.id,
+            booking: findBookingOrThrow.bind(
+                this,
+                notification._doc.booking
+            ),
+            event: singleEvent.bind(
+                this,
+                notification._doc.event
+            ),
+            user: user.bind(
+                this,
+                notification._doc.user
+            ),
+            createdAt: new Date(
+                notification._doc.createdAt
+            ).toISOString(),
+        }));
+    } catch (err) {
+        throw err;
+    }
     },
     // Public tally of every booking made on the platform.
     bookingsCount: async () => {
@@ -236,22 +293,58 @@ module.exports = {
         }
     },
     bookEvent: async (args, context) => {
-        try {
-            const bookingUser = await requireAuth(context, 'Please log in before booking an event.');
-            // Validate and ensure event exists
-            const fetchedEvent = await findEventOrThrow(args.eventId);
-            const booking = new Booking({
-                user: bookingUser._id,
-                event: fetchedEvent._id,
-            });
-            const result = await booking.save();
-            return transformBooking(result);
-        } catch (err) {
-            if (err && /Cast to ObjectId failed/.test(err.message)) {
-                throw new Error('Event not found');
-            }
-            throw err;
+    try {
+        const bookingUser = await requireAuth(
+            context,
+            'Please log in before booking an event.'
+        );
+
+        const fetchedEvent = await findEventOrThrow(args.eventId);
+
+        // Prevent users from booking their own event.
+        if (
+            fetchedEvent.creator &&
+            fetchedEvent.creator.toString() === bookingUser._id.toString()
+        ) {
+            throw new Error('You cannot book your own event.');
         }
+
+        const booking = new Booking({
+            user: bookingUser._id,
+            event: fetchedEvent._id,
+        });
+
+        const result = await booking.save();
+
+        // Notify the event owner.
+        if (fetchedEvent.creator) {
+            const fullName = [
+                bookingUser.firstName,
+                bookingUser.lastName,
+            ]
+                .filter(Boolean)
+                .join(' ');
+
+            const displayName = fullName || bookingUser.email;
+
+            await Notification.create({
+                type: 'NEW_BOOKING',
+                message: `${displayName} booked your event "${fetchedEvent.title}".`,
+                booking: result._id,
+                event: fetchedEvent._id,
+                user: bookingUser._id,
+                recipient: fetchedEvent.creator,
+            });
+        }
+
+        return transformBooking(result);
+    } catch (err) {
+        if (err && /Cast to ObjectId failed/.test(err.message)) {
+            throw new Error('Event not found');
+        }
+
+        throw err;
+    }
     },
     cancelBooking: async (args, context) => {
         try {

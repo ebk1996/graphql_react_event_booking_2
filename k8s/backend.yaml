@@ -40,6 +40,13 @@ spec:
                   name: backend-secret
                   key: FRONTEND_URL
 
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secret
+                  key: JWT_SECRET
+
+
           readinessProbe:
             httpGet:
               path: /health
