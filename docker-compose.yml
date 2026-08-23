@@ -1,0 +1,19 @@
+services:
+  mongodb:
+    image: mongo:8
+    container_name: event-booking-mongodb
+    restart: unless-stopped
+    ports:
+      # 27017 is already used by another local MongoDB instance on this machine.
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: event_app
+      MONGO_INITDB_ROOT_PASSWORD: event_app_password
+      MONGO_INITDB_DATABASE: event_booking
+    volumes:
+      - mongodb_data_v2:/data/db
+
+volumes:
+  # A fresh project-only volume. The earlier failed initialization is preserved,
+  # rather than deleting data from the machine.
+  mongodb_data_v2:

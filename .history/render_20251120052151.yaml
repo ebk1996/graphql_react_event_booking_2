@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: graphql-event-booking-api
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_USER
+        sync: false
+      - key: MONGO_PASSWORD
+        sync: false
+      - key: MONGO_DB
+        sync: false
+      - key: FRONTEND_URL
+        value: https://your-app.vercel.app

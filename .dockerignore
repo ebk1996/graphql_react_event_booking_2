@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.history
+tests
+k8s
+.env
+.env.*
+dist
+coverage
+.vscode

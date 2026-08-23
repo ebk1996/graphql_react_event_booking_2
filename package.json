@@ -1,0 +1,55 @@
+{
+  "name": "event_booking_2",
+  "version": "1.0.0",
+  "description": "A GraphQL API server for event booking built with Express.js and GraphQL.",
+  "homepage": "https://github.com/ebk1996/graphql_react_event_booking#readme",
+  "bugs": {
+    "url": "https://github.com/ebk1996/graphql_react_event_booking/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ebk1996/graphql_react_event_booking_2.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "start": "node app.js",
+    "server": "nodemon app.js",
+    "test": "node --test tests/resolvers.test.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "graphql": "^16.12.0",
+    "graphql-http": "^1.22.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.19.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ruru": "^2.0.0-beta.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react-swc": "^4.2.2",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.1.12"
+  },
+  "overrides": {}
+}

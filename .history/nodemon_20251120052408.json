@@ -1,0 +1,6 @@
+{
+    "env": {
+        "MONGODB_URI": "ace",
+        "MONGODB_DB": "event-booking"
+    }
+}
