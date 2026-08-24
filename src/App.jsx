@@ -1,46 +1,112 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-const sessionKey = 'gather-current-user'
+const sessionKey = 'link-current-user'
+
+const safeDate = (value) => {
+  if (!value) return null
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return null
+
+  return date
+}
+
+const formatDate = (value, options = {}) => {
+  const date = safeDate(value)
+
+  if (!date) return 'Date unavailable'
+
+  return date.toLocaleDateString(undefined, options)
+}
+
+const formatDateTime = (value) => {
+  const date = safeDate(value)
+
+  if (!date) return 'Date unavailable'
+
+  return date.toLocaleString()
+}
+
+const formatMonth = (value) => {
+  const date = safeDate(value)
+
+  if (!date) return '--'
+
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+  })
+}
+
+const formatDay = (value) => {
+  const date = safeDate(value)
+
+  if (!date) return '--'
+
+  return String(date.getDate())
+}
+
 
 const readSession = () => {
   try {
     const stored = JSON.parse(sessionStorage.getItem(sessionKey))
     if (stored?.token && stored?.userId) return stored
-  } catch { /* ignore corrupt session */ }
+  } catch {}
   return null
 }
 
 const request = async (query, variables = {}) => {
   const headers = { 'Content-Type': 'application/json' }
   const session = readSession()
-  if (session?.token) headers.Authorization = `Bearer ${session.token}`
-  const response = await fetch(import.meta.env.VITE_API_URL || '/graphql', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ query, variables }),
-  })
+
+  if (session?.token) {
+    headers.Authorization = `Bearer ${session.token}`
+  }
+
+  const response = await fetch(
+    import.meta.env.VITE_API_URL || '/graphql',
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query, variables }),
+    }
+  )
+
   const payload = await response.json()
-  if (payload.errors?.length) throw new Error(payload.errors[0].message)
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`)
+  }
+
+  if (payload.errors?.length) {
+    throw new Error(payload.errors[0].message)
+  }
+
   return payload.data
 }
 
-const eventsQuery = `query {
+const eventsQuery = `
+query {
   events {
     _id
     title
     description
     price
     date
+    zipCode
     creator {
       _id
+      firstName
+      lastName
       email
     }
   }
   bookingsCount
 }`
 
-const bookingsQuery = `query {
+const bookingsQuery = `
+query {
   bookings {
     _id
     createdAt
@@ -48,30 +114,13 @@ const bookingsQuery = `query {
       _id
       title
       date
+      price
     }
   }
 }`
 
-const hostBookingsQuery = `query {
-  hostBookings {
-    _id
-    createdAt
-    event {
-      _id
-      title
-      date
-    }
-    user {
-      _id
-      firstName
-      lastName
-      email
-      phone
-    }
-  }
-}`
-
-const notificationsQuery = `query {
+const notificationsQuery = `
+query {
   notifications {
     _id
     type
@@ -80,40 +129,164 @@ const notificationsQuery = `query {
     event {
       _id
       title
-      date
-    }
-    user {
-      _id
-      firstName
-      lastName
-      email
-      phone
     }
   }
 }`
-const emptyEvent = { title: '', description: '', price: '', date: '', zipCode: '',
-}
 
-// <input type="datetime-local"> wants a local `YYYY-MM-DDTHH:mm`, not the stored ISO string.
-const toLocalInput = (iso) => {
-  const d = new Date(iso)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+const myDriverQuery = `
+query {
+  myDriver {
+    _id
+    status
+    online
+    vehicleMake
+    vehicleModel
+    vehicleYear
+    vehicleColor
+    licensePlate
+    rating
+    totalEarnings
+    completedRides
+  }
+}`
+
+const quoteRideMutation = `
+query QuoteRide($input: RideQuoteInput!) {
+  quoteRide(input: $input) {
+    distanceMiles
+    durationMinutes
+    estimatedFare
+    driverAmount
+    platformAmount
+  }
+}`
+
+const loginMutation = `
+mutation Login($loginInput: LoginInput!) {
+  login(loginInput: $loginInput) {
+    userId
+    email
+    token
+    tokenExpiration
+  }
+}`
+
+const registerMutation = `
+mutation Register($userInput: UserInput!) {
+  createUser(userInput: $userInput) {
+    _id
+    firstName
+    lastName
+    email
+    phone
+    zipCode
+  }
+}`
+
+const applyDriverMutation = `
+mutation Apply($driverInput: DriverInput!) {
+  applyAsDriver(driverInput: $driverInput) {
+    _id
+    status
+    online
+    vehicleMake
+    vehicleModel
+    vehicleYear
+    vehicleColor
+    licensePlate
+    rating
+    totalEarnings
+    completedRides
+  }
+}`
+
+const updateDriverOnlineMutation = `
+mutation SetOnline($online: Boolean!) {
+  setDriverOnline(online: $online) {
+    _id
+    status
+    online
+    vehicleMake
+    vehicleModel
+    vehicleYear
+    vehicleColor
+    licensePlate
+    rating
+    totalEarnings
+    completedRides
+  }
+}`
+
+const createEventMutation = `
+mutation CreateEvent($eventInput: EventInput!) {
+  createEvent(eventInput: $eventInput) {
+    _id
+    title
+  }
+}`
+
+const bookEventMutation = `
+mutation Book($eventId: ID!) {
+  bookEvent(eventId: $eventId) {
+    _id
+  }
+}`
+
+const updateProfileMutation = `
+mutation UpdateProfile(
+  $firstName: String
+  $lastName: String
+  $phone: String
+  $bio: String
+) {
+  updateProfile(
+    firstName: $firstName
+    lastName: $lastName
+    phone: $phone
+    bio: $bio
+  ) {
+    _id
+    firstName
+    lastName
+    phone
+    email
+    bio
+    zipCode
+  }
+}`
+
+const emptyEvent = {
+  title: '',
+  description: '',
+  price: '',
+  date: '',
+  zipCode: '',
 }
 
 function App() {
+  const [session, setSession] = useState(readSession())
+  const [page, setPage] = useState('dashboard')
+
   const [events, setEvents] = useState([])
-  const [bookingsCount, setBookingsCount] = useState(0)
   const [bookings, setBookings] = useState([])
-  const [hostBookings, setHostBookings] = useState([])
+  const [bookingsCount, setBookingsCount] = useState(0)
   const [notifications, setNotifications] = useState([])
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
+
+  const [driver, setDriver] = useState(null)
+  const [driverLoading, setDriverLoading] = useState(false)
+
   const [notice, setNotice] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [bookingsLoading, setBookingsLoading] = useState(false)
-  const [hostBookingsLoading, setHostBookingsLoading] = useState(false)
-  const [notificationsLoading, setNotificationsLoading] = useState(false)
-  const [account, setAccount] = useState({
+  const [error, setError] = useState('')
+
+  const [authMode, setAuthMode] = useState('login')
+  const [showAuth, setShowAuth] = useState(false)
+
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: '',
+  })
+
+  const [registerForm, setRegisterForm] = useState({
     firstName: '',
     lastName: '',
     phone: '',
@@ -121,238 +294,125 @@ function App() {
     email: '',
     password: '',
   })
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' })
+
   const [event, setEvent] = useState(emptyEvent)
-  const [editingId, setEditingId] = useState(null)
-  const [loginOpen, setLoginOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState(() => readSession())
+
+  const [ride, setRide] = useState({
+    pickup: '',
+    destination: '',
+    distanceMiles: '',
+    durationMinutes: '',
+    surgeMultiplier: '1',
+  })
+
+  const [rideQuote, setRideQuote] = useState(null)
+  const [rideLoading, setRideLoading] = useState(false)
+
+  const [driverForm, setDriverForm] = useState({
+    vehicleMake: '',
+    vehicleModel: '',
+    vehicleYear: '',
+    vehicleColor: '',
+    licensePlate: '',
+  })
+
+  const [profile, setProfile] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    bio: '',
+  })
+
+  const [loading, setLoading] = useState(false)
+
+  const flash = (message) => {
+    setNotice(message)
+    setError('')
+    setTimeout(() => setNotice(''), 4000)
+  }
+
+  const fail = (message) => {
+    setError(message)
+    setNotice('')
+  }
 
   const loadEvents = async () => {
-    setLoading(true)
     try {
       const data = await request(eventsQuery)
-      setEvents(data.events)
-      setBookingsCount(data.bookingsCount)
+      setEvents(data.events || [])
+      setBookingsCount(data.bookingsCount || 0)
+    } catch (err) {
+      fail(err.message)
     }
-    catch (error) { setNotice(`Could not load events: ${error.message}`) }
-    finally { setLoading(false) }
   }
 
   const loadBookings = async () => {
-    if (!currentUser) { setBookings([]); return }
-    setBookingsLoading(true)
-    try { setBookings((await request(bookingsQuery)).bookings) }
-    catch (error) { setNotice(`Could not load bookings: ${error.message}`) }
-    finally { setBookingsLoading(false) }
-  }
-  const loadHostBookings = async () => {
-  if (!currentUser) {
-    setHostBookings([])
-    return
-  }
+    if (!session) return
 
-  setHostBookingsLoading(true)
-
-  try {
-    const data = await request(hostBookingsQuery)
-    setHostBookings(data.hostBookings)
-  } catch (error) {
-    setNotice(`Could not load event bookings: ${error.message}`)
-  } finally {
-    setHostBookingsLoading(false)
-  }
-  }
-
-  const formatNotificationDate = (date) => {
-    const d = new Date(date)
-    return d.toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
+    try {
+      const data = await request(bookingsQuery)
+      setBookings(data.bookings || [])
+    } catch (err) {
+      fail(err.message)
+    }
   }
 
   const loadNotifications = async () => {
-  if (!currentUser) {
-    setNotifications([])
-    return
+    if (!session) return
+
+    try {
+      const data = await request(notificationsQuery)
+      setNotifications(data.notifications || [])
+    } catch (err) {
+      fail(err.message)
+    }
   }
 
-  setNotificationsLoading(true)
-
-  try {
-    const data = await request(notificationsQuery)
-    setNotifications(data.notifications)
-  } catch (error) {
-    setNotice(`Could not load notifications: ${error.message}`)
-  } finally {
-    setNotificationsLoading(false)
-  }
-  }
-
-  useEffect(() => { loadEvents() }, [])
-
-  useEffect(() => {
-    if (!currentUser) {
-      setBookings([])
-      setHostBookings([])
-      setNotifications([])
+  const loadDriver = async () => {
+    if (!session) {
+      setDriver(null)
       return
     }
 
-    loadBookings()
-    loadHostBookings()
-    loadNotifications()
-  }, [currentUser?.userId])
+    setDriverLoading(true)
 
-  const register = async (e) => {
-    e.preventDefault()
     try {
-      await request(
-        `mutation ($userInput: UserInput) { createUser(userInput: $userInput) { email } }`,
-        { userInput: account },
-      )
-      setAccount({
-        firstName: '',
-        lastName: '',
-        phone: '',
-        zipCode: '',
-        email: '',
-        password: '',
-      })
-      setNotice('Successfully registered. Please log in to continue.')
-      setLoginForm({ email: account.email, password: '' })
-    } catch (error) {
-      setNotice(error.message)
-    }
-  }
+      const data = await request(myDriverQuery)
+      setDriver(data.myDriver || null)
 
-  const login = async (e) => {
-    e.preventDefault()
-    try {
-      const data = await request(
-        `mutation ($loginInput: LoginInput!) { login(loginInput: $loginInput) { userId email token tokenExpiration } }`,
-        { loginInput: loginForm },
-      )
-      sessionStorage.setItem(sessionKey, JSON.stringify(data.login))
-      setCurrentUser(data.login)
-      setLoginForm({ email: '', password: '' })
-      setLoginOpen(false)
-      setNotice(`Welcome back, ${data.login.email}.`)
-    } catch (error) {
-      setNotice(error.message)
-    }
-  }
-
-  const logout = () => {
-    sessionStorage.removeItem(sessionKey)
-    setCurrentUser(null)
-    setNotice('You have been logged out.')
-  }
-
-  const requireLogin = () => {
-    if (currentUser) return true
-    setNotice('Please log in to continue.')
-    setLoginOpen(true)
-    return false
-  }
-
-  const saveEvent = async (e) => {
-    e.preventDefault()
-    if (!requireLogin()) return
-    const eventInput = { ...event, price: Number(event.price), date: new Date(event.date).toISOString() }
-    try {
-      if (editingId) {
-        await request(
-          `mutation ($eventId: ID!, $eventInput: EventInput) { updateEvent(eventId: $eventId, eventInput: $eventInput) { _id } }`,
-          { eventId: editingId, eventInput },
-        )
-        setNotice('Event updated.')
-      } else {
-        await request(
-          `mutation ($eventInput: EventInput) { createEvent(eventInput: $eventInput) { _id } }`,
-          { eventInput },
-        )
-        setNotice('Event published.')
+      if (data.myDriver) {
+        setDriverForm({
+          vehicleMake: data.myDriver.vehicleMake || '',
+          vehicleModel: data.myDriver.vehicleModel || '',
+          vehicleYear: data.myDriver.vehicleYear || '',
+          vehicleColor: data.myDriver.vehicleColor || '',
+          licensePlate: data.myDriver.licensePlate || '',
+        })
       }
-      cancelEdit()
-      loadEvents()
-    } catch (error) {
-      setNotice(error.message)
-    }
-  }
-
-  const startEdit = (item) => {
-    setEditingId(item._id)
-    setEvent({ title: item.title, description: item.description, price: String(item.price), date: toLocalInput(item.date) })
-    document.getElementById('host')?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEvent(emptyEvent)
-  }
-
-  const deleteEvent = async (item) => {
-    if (!requireLogin()) return
-    if (!window.confirm(`Delete “${item.title}”? Any bookings for it will be cancelled.`)) return
-    try {
-      await request(
-        `mutation ($eventId: ID!) { deleteEvent(eventId: $eventId) { _id } }`,
-        { eventId: item._id },
-      )
-      if (editingId === item._id) cancelEdit()
-      setNotice('Event deleted.')
-      loadEvents()
-      loadBookings()
-    } catch (error) {
-      setNotice(error.message)
-    }
-  }
-
-  const book = async (eventId) => {
-    if (!requireLogin()) return
-    try {
-      await request(
-        `mutation ($eventId: ID!) { bookEvent(eventId: $eventId) { _id } }`,
-        { eventId },
-      )
-      setNotice('Your booking is confirmed.')
-      setBookingsCount(count => count + 1)
-      loadBookings()
-      loadHostBookings()
-      loadNotifications()
-    } catch (error) {
-      setNotice(error.message)
-    }
-  }
-
-  const cancelBooking = async (booking) => {
-    if (!requireLogin()) return
-    if (!window.confirm(`Cancel your booking for “${booking.event.title}”?`)) return
-    try {
-      await request(
-        `mutation ($bookingId: ID!) { cancelBooking(bookingId: $bookingId) { _id } }`,
-        { bookingId: booking._id },
-      )
-      setNotice('Booking cancelled.')
-      setBookingsCount(count => Math.max(0, count - 1))
-      loadBookings()
-    } catch (error) {
-      setNotice(error.message)
+    } catch {
+      setDriver(null)
+    } finally {
+      setDriverLoading(false)
     }
   }
 
   useEffect(() => {
-    const elements = document.querySelectorAll(
-      'main > nav, main > header, main > section, main > .notice, .event-card, .booking-row, .host form'
-    )
+    loadEvents()
+  }, [])
 
-    elements.forEach((element, index) => {
-      element.classList.add('scroll-reveal')
-      element.style.setProperty('--reveal-delay', `${Math.min(index * 35, 280)}ms`)
-    })
+  useEffect(() => {
+    if (session) {
+      loadBookings()
+      loadNotifications()
+      loadDriver()
+    }
+  }, [session])
+
+  // Reveal sections/cards as they enter the viewport.
+  useEffect(() => {
+    const elements = document.querySelectorAll('.reveal')
+
+    if (!elements.length) return
 
     const observer = new IntersectionObserver(
       entries => {
@@ -364,224 +424,1176 @@ function App() {
         })
       },
       {
-        threshold: 0.08,
-        rootMargin: '0px 0px -50px 0px',
+        threshold: 0.12,
+        rootMargin: '0px 0px -40px 0px',
       }
     )
 
     elements.forEach(element => observer.observe(element))
 
     return () => observer.disconnect()
-  }, [])
+  }, [page, events.length, bookings.length])
 
-  return <main>
-    <section className="seo-intro">
-      <div className="seo-copy">
-        <p className="eyebrow">ONE PLATFORM. EVERY EVENT.</p>
+  const login = async (e) => {
+    e.preventDefault()
+    setLoading(true)
 
-        <h2>Find events in your ZIP code.</h2>
+    try {
+      const data = await request(loginMutation, {
+        loginInput: loginForm,
+      })
 
-        <p className="seo-lead">
-          Event Booking makes it simple to discover what's happening nearby
-          and gives organizations and businesses an easy way to promote their
-          events to the people who matter.
-        </p>
+      sessionStorage.setItem(
+        sessionKey,
+        JSON.stringify(data.login)
+      )
 
-        <div className="marketing-grid">
-          <article>
-            <span className="marketing-icon">01</span>
-            <h3>For Students</h3>
-            <p>
-              Discover college events, campus activities, clubs, meetups,
-              networking opportunities, parties, and local experiences near you.
-            </p>
-          </article>
+      setSession(data.login)
+      setShowAuth(false)
+      setLoginForm({ email: '', password: '' })
+      flash('Welcome back.')
+    } catch (err) {
+      fail(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
+  const register = async (e) => {
+    e.preventDefault()
+    setLoading(true)
 
+    try {
+      await request(registerMutation, {
+        userInput: registerForm,
+      })
 
-          <article>
-            <span className="marketing-icon">03</span>
-            <h3>For Clubs & Organizations</h3>
-            <p>
-              Put your organization in front of people looking for something
-              to do. Publish events and make your next gathering easier to find.
-            </p>
-          </article>
+      flash('Account created. Please log in.')
 
-          <article>
-            <span className="marketing-icon">04</span>
-            <h3>For Businesses</h3>
-            <p>
-              Restaurants, venues, nonprofits, entrepreneurs, and local
-              businesses can promote events and connect with customers in
-              their community.
-            </p>
-          </article>
-        </div>
+      setAuthMode('login')
 
-        <div className="seo-callout">
-          <strong>Have something happening?</strong>
-          <span>
-            Create an event and get it in front of people searching for events
-            in your area.
-          </span>
-          <a href="#host">Host an event →</a>
-        </div>
-      </div>
-    </section>
+      setLoginForm({
+        email: registerForm.email,
+        password: '',
+      })
+    } catch (err) {
+      fail(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    <nav>
-      <span className="brand">LINK</span>
+  const logout = () => {
+    sessionStorage.removeItem(sessionKey)
+    setSession(null)
+    setDriver(null)
+    setBookings([])
+    setNotifications([])
+    setPage('dashboard')
+    flash('You have been logged out.')
+  }
 
-      <a href="#events">Events</a>
+  const bookEvent = async (eventId) => {
+    if (!session) {
+      setShowAuth(true)
+      return
+    }
 
-      {currentUser && <a href="#bookings">My bookings</a>}
+    try {
+      await request(bookEventMutation, { eventId })
+      flash('Event booked successfully.')
+      await loadBookings()
+      await loadEvents()
+    } catch (err) {
+      fail(err.message)
+    }
+  }
 
-      <a href="#host">Host an event</a>
+  const publishEvent = async (e) => {
+    e.preventDefault()
 
-      {currentUser && (
-        <div className="notification-wrapper">
-          <button
-            className="notification-button"
-            onClick={() => setNotificationsOpen(open => !open)}
-            aria-label="Notifications"
-            aria-expanded={notificationsOpen}
-          >
-            <span className="notification-icon">♧</span>
-            <span>Notifications</span>
+    if (!session) {
+      setShowAuth(true)
+      return
+    }
 
-            {notifications.length > 0 && (
-              <span className="notification-count">
-                {notifications.length}
-              </span>
-            )}
-          </button>
+    try {
+      await request(createEventMutation, {
+        eventInput: {
+          ...event,
+          price: Number(event.price),
+        },
+      })
 
-          {notificationsOpen && (
-            <div className="notification-panel">
-              <div className="notification-header">
-                <div>
-                  <p className="eyebrow">UPDATES</p>
-                  <h3>Notifications</h3>
-                </div>
+      setEvent(emptyEvent)
+      flash('Event published.')
+      await loadEvents()
+    } catch (err) {
+      fail(err.message)
+    }
+  }
 
-                <button
-                  className="text-button"
-                  onClick={loadNotifications}
-                  disabled={notificationsLoading}
-                >
-                  {notificationsLoading ? 'Refreshing…' : 'Refresh'}
-                </button>
-              </div>
+  const getRideQuote = async (e) => {
+    e.preventDefault()
 
-              {notificationsLoading ? (
-                <div className="notification-empty">
-                  <p>Loading notifications…</p>
-                </div>
-              ) : notifications.length ? (
-                <div className="notification-list">
-                  {notifications.map(notification => (
-                    <article
-                      className="notification-item"
-                      key={notification._id}
-                    >
-                      <div className="notification-dot" />
+    if (!session) {
+      setShowAuth(true)
+      return
+    }
 
-                      <div className="notification-content">
-                        <p>{notification.message}</p>
+    setRideLoading(true)
+    setRideQuote(null)
 
-                        <small>
-                          {formatNotificationDate(notification.createdAt)}
-                        </small>
+    try {
+      const input = {
+        pickup: {
+          address: ride.pickup,
+          lat: 0,
+          lng: 0,
+        },
+        destination: {
+          address: ride.destination,
+          lat: 0,
+          lng: 0,
+        },
+        distanceMiles: Number(ride.distanceMiles),
+        durationMinutes: Number(ride.durationMinutes),
+        surgeMultiplier: Number(ride.surgeMultiplier || 1),
+      }
 
-                        {notification.event && (
-                          <span className="notification-event">
-                            {notification.event.title}
-                          </span>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="notification-empty">
-                  <div className="notification-empty-icon">✓</div>
-                  <h4>You're all caught up</h4>
-                  <p>
-                    New booking and event updates will appear here.
-                  </p>
-                </div>
-              )}
-            </div>
+      const data = await request(quoteRideMutation, { input })
+
+      setRideQuote(data.quoteRide)
+      flash('Fare quote calculated.')
+    } catch (err) {
+      fail(err.message)
+    } finally {
+      setRideLoading(false)
+    }
+  }
+
+  const applyAsDriver = async (e) => {
+    e.preventDefault()
+
+    try {
+      const data = await request(applyDriverMutation, {
+        driverInput: {
+          ...driverForm,
+          vehicleYear: Number(driverForm.vehicleYear),
+        },
+      })
+
+      setDriver(data.applyAsDriver)
+      flash('Driver application submitted.')
+    } catch (err) {
+      fail(err.message)
+    }
+  }
+
+  const toggleDriver = async () => {
+    try {
+      const data = await request(updateDriverOnlineMutation, {
+        online: !driver.online,
+      })
+
+      setDriver(data.setDriverOnline)
+      flash(
+        data.setDriverOnline.online
+          ? 'You are now online.'
+          : 'You are now offline.'
+      )
+    } catch (err) {
+      fail(err.message)
+    }
+  }
+
+  const saveProfile = async (e) => {
+    e.preventDefault()
+
+    try {
+      await request(updateProfileMutation, profile)
+      flash('Profile updated.')
+    } catch (err) {
+      fail(err.message)
+    }
+  }
+
+  const nav = [
+    ['dashboard', 'Dashboard'],
+    ['events', 'Events'],
+    ['rides', 'Rides'],
+    ['driver', 'Driver'],
+    ['bookings', 'My Bookings'],
+    ['profile', 'Profile'],
+  ]
+
+  return (
+    <div className="app-shell" id="top">
+      <header className="topbar">
+        <a
+          className="brand"
+          href="#top"
+          aria-label="LINK home"
+          onClick={() => setPage('dashboard')}
+        >
+          <span className="brand-mark">LINK</span>
+          <span>LINK</span>
+        </a>
+
+        <nav>
+          {nav.map(([key, label]) => (
+            <button
+              key={key}
+              className={page === key ? 'active' : ''}
+              onClick={() => setPage(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="account-actions">
+          {session ? (
+            <>
+              <span className="user-email">{session.email}</span>
+              <button className="outline-button" onClick={logout}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <button
+              className="primary-button"
+              onClick={() => setShowAuth(true)}
+            >
+              Login
+            </button>
           )}
         </div>
-      )}
+      </header>
 
-      {currentUser ? (
-        <>
-          <span className="nav-user">{currentUser.email}</span>
-          <button className="nav-auth" onClick={logout}>
-            Log out
-          </button>
-        </>
-      ) : (
-        <button
-          className="nav-auth"
-          onClick={() => setLoginOpen(true)}
+      <main>
+        {notice && <div className="toast success">{notice}</div>}
+        {error && <div className="toast error">{error}</div>}
+
+        {page === 'dashboard' && (
+          <section className="hero reveal">
+            <div className="hero-copy">
+              <span className="eyebrow">EVENTS • RIDES • COMMUNITY</span>
+
+              <h1>
+                Everything happening around you,
+                <span> in one place.</span>
+              </h1>
+
+              <p>
+                Discover local events, book experiences, request rides,
+                and connect with your community.
+              </p>
+
+              <div className="hero-actions">
+                <button
+                  className="primary-button large hero-action-button"
+                  onClick={() => setPage('events')}
+                >
+                  Explore events
+                </button>
+
+                <button
+                  className="outline-button large hero-action-button"
+                  onClick={() => setPage('rides')}
+                >
+                  Get a ride
+                </button>
+              </div>
+            </div>
+
+            <div className="hero-card reveal reveal-delay-2">
+              <div className="hero-card-header">
+                <span>QUICK ACTIONS</span>
+              </div>
+
+              <button onClick={() => setPage('events')}>
+                <strong>Discover events</strong>
+                <span>{events.length} events available</span>
+              </button>
+
+              <button onClick={() => setPage('rides')}>
+                <strong>Request a ride</strong>
+                <span>Calculate your estimated fare</span>
+              </button>
+
+              <button onClick={() => setPage('driver')}>
+                <strong>Drive with LINK</strong>
+                <span>
+                  {driver ? 'Open your driver dashboard' : 'Apply to drive'}
+                </span>
+              </button>
+            </div>
+          </section>
+        )}
+
+        {page === 'events' && (
+          <section className="page reveal">
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">COMMUNITY</span>
+                <h2>Upcoming events</h2>
+                <p>Find something worth showing up for.</p>
+              </div>
+
+              <button
+                className="outline-button"
+                onClick={loadEvents}
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div className="stats-row reveal reveal-delay-1">
+              <div>
+                <strong>{events.length}</strong>
+                <span>Events</span>
+              </div>
+
+              <div>
+                <strong>{bookingsCount}</strong>
+                <span>Total bookings</span>
+              </div>
+            </div>
+
+            <div className="event-grid">
+              {events.map(item => (
+                <article className="event-card reveal" key={item._id}>
+                  <div className="event-date">
+                    <strong>
+                      {formatMonth(item.date)}
+                    </strong>
+
+                    <span>
+                      {formatDay(item.date)}
+                    </span>
+                  </div>
+
+                  <div className="event-content">
+                    <span className="event-location">
+                      ZIP {item.zipCode}
+                    </span>
+
+                    <h3>{item.title}</h3>
+
+                    <p>{item.description}</p>
+
+                    <small>
+                      Hosted by{' '}
+                      {item.creator?.firstName
+                        ? `${item.creator.firstName} ${item.creator.lastName || ''}`
+                        : item.creator?.email}
+                    </small>
+
+                    <div className="event-footer">
+                      <strong>
+                        ${Number(item.price).toFixed(2)}
+                      </strong>
+
+                      <button
+                        className="primary-button"
+                        onClick={() => bookEvent(item._id)}
+                      >
+                        Book now
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {!events.length && (
+              <div className="empty-state">
+                <h3>No events yet</h3>
+                <p>Create the first event in your community.</p>
+              </div>
+            )}
+
+            {session && (
+              <div className="form-card">
+                <span className="eyebrow">HOST</span>
+                <h3>Publish an event</h3>
+
+                <form onSubmit={publishEvent}>
+                  <input
+                    placeholder="Event title"
+                    value={event.title}
+                    onChange={e =>
+                      setEvent({
+                        ...event,
+                        title: e.target.value,
+                      })
+                    }
+                    required
+                  />
+
+                  <textarea
+                    placeholder="Description"
+                    value={event.description}
+                    onChange={e =>
+                      setEvent({
+                        ...event,
+                        description: e.target.value,
+                      })
+                    }
+                    required
+                  />
+
+                  <div className="form-grid">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Price"
+                      value={event.price}
+                      onChange={e =>
+                        setEvent({
+                          ...event,
+                          price: e.target.value,
+                        })
+                      }
+                      required
+                    />
+
+                    <input
+                      type="datetime-local"
+                      value={event.date}
+                      onChange={e =>
+                        setEvent({
+                          ...event,
+                          date: e.target.value,
+                        })
+                      }
+                      required
+                    />
+
+                    <input
+                      placeholder="ZIP code"
+                      maxLength="5"
+                      value={event.zipCode}
+                      onChange={e =>
+                        setEvent({
+                          ...event,
+                          zipCode: e.target.value
+                            .replace(/\D/g, '')
+                            .slice(0, 5),
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <button className="primary-button">
+                    Publish event
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+        )}
+
+        {page === 'rides' && (
+          <section className="page reveal">
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">TRANSPORTATION</span>
+                <h2>Request a ride</h2>
+                <p>Get an estimated fare before your trip.</p>
+              </div>
+            </div>
+
+            <div className="ride-layout">
+              <form className="form-card" onSubmit={getRideQuote}>
+                <h3>Trip details</h3>
+
+                <label>Pickup</label>
+                <input
+                  placeholder="Pickup address"
+                  value={ride.pickup}
+                  onChange={e =>
+                    setRide({
+                      ...ride,
+                      pickup: e.target.value,
+                    })
+                  }
+                  required
+                />
+
+                <label>Destination</label>
+                <input
+                  placeholder="Destination address"
+                  value={ride.destination}
+                  onChange={e =>
+                    setRide({
+                      ...ride,
+                      destination: e.target.value,
+                    })
+                  }
+                  required
+                />
+
+                <div className="form-grid">
+                  <div>
+                    <label>Distance</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="Miles"
+                      value={ride.distanceMiles}
+                      onChange={e =>
+                        setRide({
+                          ...ride,
+                          distanceMiles: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label>Duration</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Minutes"
+                      value={ride.durationMinutes}
+                      onChange={e =>
+                        setRide({
+                          ...ride,
+                          durationMinutes: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <label>Surge multiplier</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.1"
+                  value={ride.surgeMultiplier}
+                  onChange={e =>
+                    setRide({
+                      ...ride,
+                      surgeMultiplier: e.target.value,
+                    })
+                  }
+                />
+
+                <button
+                  className="primary-button large"
+                  disabled={rideLoading}
+                >
+                  {rideLoading
+                    ? 'Calculating...'
+                    : 'Calculate fare'}
+                </button>
+              </form>
+
+              <div className="quote-card">
+                <span className="eyebrow">FARE ESTIMATE</span>
+
+                {rideQuote ? (
+                  <>
+                    <div className="fare">
+                      ${Number(rideQuote.estimatedFare).toFixed(2)}
+                    </div>
+
+                    <div className="quote-stat">
+                      <span>Distance</span>
+                      <strong>
+                        {rideQuote.distanceMiles} mi
+                      </strong>
+                    </div>
+
+                    <div className="quote-stat">
+                      <span>Duration</span>
+                      <strong>
+                        {rideQuote.durationMinutes} min
+                      </strong>
+                    </div>
+
+                    <div className="quote-stat">
+                      <span>Driver amount</span>
+                      <strong>
+                        ${Number(rideQuote.driverAmount).toFixed(2)}
+                      </strong>
+                    </div>
+
+                    <div className="quote-stat">
+                      <span>Platform amount</span>
+                      <strong>
+                        ${Number(rideQuote.platformAmount).toFixed(2)}
+                      </strong>
+                    </div>
+
+                    <button
+                      className="primary-button large"
+                      onClick={() =>
+                        flash(
+                          'Ride request UI is ready. Ride creation must be added to the GraphQL API before a ride can actually be requested.'
+                        )
+                      }
+                    >
+                      Request ride
+                    </button>
+                  </>
+                ) : (
+                  <div className="quote-empty">
+                    <div className="quote-icon">↗</div>
+                    <h3>Your fare appears here</h3>
+                    <p>
+                      Enter your trip details and calculate an estimate.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {page === 'driver' && (
+          <section className="page reveal">
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">DRIVER CENTER</span>
+                <h2>
+                  {driver
+                    ? 'Driver dashboard'
+                    : 'Drive with LINK'}
+                </h2>
+
+                <p>
+                  {driver
+                    ? 'Manage your driving status and vehicle.'
+                    : 'Turn your vehicle into an earning opportunity.'}
+                </p>
+              </div>
+            </div>
+
+            {!session ? (
+              <div className="empty-state">
+                <h3>Login required</h3>
+                <p>Log in to apply as a driver.</p>
+                <button
+                  className="primary-button"
+                  onClick={() => setShowAuth(true)}
+                >
+                  Login
+                </button>
+              </div>
+            ) : driverLoading ? (
+              <div className="empty-state">
+                Loading driver profile...
+              </div>
+            ) : driver ? (
+              <div className="driver-dashboard">
+                <div className="driver-status-card">
+                  <div>
+                    <span className="eyebrow">STATUS</span>
+                    <h3>{driver.status}</h3>
+                    <p>
+                      {driver.online
+                        ? 'You are currently accepting rides.'
+                        : 'You are currently offline.'}
+                    </p>
+                  </div>
+
+                  <button
+                    className={
+                      driver.online
+                        ? 'danger-button'
+                        : 'primary-button'
+                    }
+                    onClick={toggleDriver}
+                    disabled={driver.status !== 'APPROVED'}
+                  >
+                    {driver.online ? 'Go offline' : 'Go online'}
+                  </button>
+                </div>
+
+                <div className="driver-stats">
+                  <div>
+                    <strong>
+                      {Number(driver.rating).toFixed(1)}
+                    </strong>
+                    <span>Rating</span>
+                  </div>
+
+                  <div>
+                    <strong>{driver.completedRides}</strong>
+                    <span>Completed rides</span>
+                  </div>
+
+                  <div>
+                    <strong>
+                      ${Number(driver.totalEarnings).toFixed(2)}
+                    </strong>
+                    <span>Total earnings</span>
+                  </div>
+                </div>
+
+                <div className="form-card">
+                  <span className="eyebrow">VEHICLE</span>
+                  <h3>Your vehicle</h3>
+
+                  <div className="vehicle-grid">
+                    <div>
+                      <span>Make</span>
+                      <strong>{driver.vehicleMake}</strong>
+                    </div>
+
+                    <div>
+                      <span>Model</span>
+                      <strong>{driver.vehicleModel}</strong>
+                    </div>
+
+                    <div>
+                      <span>Year</span>
+                      <strong>{driver.vehicleYear}</strong>
+                    </div>
+
+                    <div>
+                      <span>Color</span>
+                      <strong>{driver.vehicleColor}</strong>
+                    </div>
+
+                    <div>
+                      <span>License plate</span>
+                      <strong>{driver.licensePlate}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="form-card driver-application">
+                <span className="eyebrow">DRIVER APPLICATION</span>
+                <h3>Become a driver</h3>
+
+                <form onSubmit={applyAsDriver}>
+                  <div className="form-grid">
+                    <input
+                      placeholder="Vehicle make"
+                      value={driverForm.vehicleMake}
+                      onChange={e =>
+                        setDriverForm({
+                          ...driverForm,
+                          vehicleMake: e.target.value,
+                        })
+                      }
+                      required
+                    />
+
+                    <input
+                      placeholder="Vehicle model"
+                      value={driverForm.vehicleModel}
+                      onChange={e =>
+                        setDriverForm({
+                          ...driverForm,
+                          vehicleModel: e.target.value,
+                        })
+                      }
+                      required
+                    />
+
+                    <input
+                      type="number"
+                      placeholder="Vehicle year"
+                      value={driverForm.vehicleYear}
+                      onChange={e =>
+                        setDriverForm({
+                          ...driverForm,
+                          vehicleYear: e.target.value,
+                        })
+                      }
+                      required
+                    />
+
+                    <input
+                      placeholder="Vehicle color"
+                      value={driverForm.vehicleColor}
+                      onChange={e =>
+                        setDriverForm({
+                          ...driverForm,
+                          vehicleColor: e.target.value,
+                        })
+                      }
+                      required
+                    />
+
+                    <input
+                      placeholder="License plate"
+                      value={driverForm.licensePlate}
+                      onChange={e =>
+                        setDriverForm({
+                          ...driverForm,
+                          licensePlate: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <button className="primary-button large">
+                    Submit driver application
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+        )}
+
+        {page === 'bookings' && (
+          <section className="page reveal">
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">YOUR ACTIVITY</span>
+                <h2>My bookings</h2>
+                <p>Your upcoming event reservations.</p>
+              </div>
+
+              <button
+                className="outline-button"
+                onClick={loadBookings}
+              >
+                Refresh
+              </button>
+            </div>
+
+            {!session ? (
+              <div className="empty-state">
+                <h3>Login required</h3>
+                <button
+                  className="primary-button"
+                  onClick={() => setShowAuth(true)}
+                >
+                  Login
+                </button>
+              </div>
+            ) : bookings.length ? (
+              <div className="booking-list">
+                {bookings.map(booking => (
+                  <article
+                    className="booking-row"
+                    key={booking._id}
+                  >
+                    <div>
+                      <span>EVENT</span>
+                      <strong>
+                        {booking.event.title}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>DATE</span>
+                      <strong>
+                        {new Date(
+                          booking.event.date
+                        ).toLocaleString()}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>PRICE</span>
+                      <strong>
+                        $
+                        {Number(
+                          booking.event.price
+                        ).toFixed(2)}
+                      </strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <h3>No bookings yet</h3>
+                <p>Book an event and it will appear here.</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {page === 'profile' && (
+          <section className="page reveal">
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">ACCOUNT</span>
+                <h2>Your profile</h2>
+                <p>Manage your personal information.</p>
+              </div>
+            </div>
+
+            {!session ? (
+              <div className="empty-state">
+                <h3>Login required</h3>
+                <button
+                  className="primary-button"
+                  onClick={() => setShowAuth(true)}
+                >
+                  Login
+                </button>
+              </div>
+            ) : (
+              <div className="form-card">
+                <form onSubmit={saveProfile}>
+                  <div className="form-grid">
+                    <input
+                      placeholder="First name"
+                      value={profile.firstName}
+                      onChange={e =>
+                        setProfile({
+                          ...profile,
+                          firstName: e.target.value,
+                        })
+                      }
+                    />
+
+                    <input
+                      placeholder="Last name"
+                      value={profile.lastName}
+                      onChange={e =>
+                        setProfile({
+                          ...profile,
+                          lastName: e.target.value,
+                        })
+                      }
+                    />
+
+                    <input
+                      placeholder="Phone"
+                      value={profile.phone}
+                      onChange={e =>
+                        setProfile({
+                          ...profile,
+                          phone: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <textarea
+                    placeholder="Bio"
+                    value={profile.bio}
+                    onChange={e =>
+                      setProfile({
+                        ...profile,
+                        bio: e.target.value,
+                      })
+                    }
+                  />
+
+                  <button className="primary-button">
+                    Save profile
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+        )}
+
+        {notifications.length > 0 && (
+          <aside className="notification-drawer">
+            <div className="notification-header">
+              <span>Notifications</span>
+              <strong>{notifications.length}</strong>
+            </div>
+
+            {notifications.slice(0, 5).map(notification => (
+              <div
+                className="notification-item"
+                key={notification._id}
+              >
+                <strong>{notification.type}</strong>
+                <p>{notification.message}</p>
+              </div>
+            ))}
+          </aside>
+        )}
+      </main>
+
+      <footer>
+        <span>LINK</span>
+        <span>Events • Rides • Community</span>
+      </footer>
+
+      {showAuth && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowAuth(false)}
         >
-          Log in
-        </button>
+          <div
+            className="auth-modal"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              className="modal-close"
+              onClick={() => setShowAuth(false)}
+            >
+              ×
+            </button>
+
+            <div className="auth-tabs">
+              <button
+                className={authMode === 'login' ? 'active' : ''}
+                onClick={() => setAuthMode('login')}
+              >
+                Login
+              </button>
+
+              <button
+                className={
+                  authMode === 'register'
+                    ? 'active'
+                    : ''
+                }
+                onClick={() => setAuthMode('register')}
+              >
+                Register
+              </button>
+            </div>
+
+            {authMode === 'login' ? (
+              <form onSubmit={login}>
+                <h2>Welcome back</h2>
+
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={loginForm.email}
+                  onChange={e =>
+                    setLoginForm({
+                      ...loginForm,
+                      email: e.target.value,
+                    })
+                  }
+                  required
+                />
+
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={loginForm.password}
+                  onChange={e =>
+                    setLoginForm({
+                      ...loginForm,
+                      password: e.target.value,
+                    })
+                  }
+                  required
+                />
+
+                <button
+                  className="primary-button large"
+                  disabled={loading}
+                >
+                  {loading ? 'Logging in...' : 'Login'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={register}>
+                <h2>Create account</h2>
+
+                <div className="form-grid">
+                  <input
+                    placeholder="First name"
+                    value={registerForm.firstName}
+                    onChange={e =>
+                      setRegisterForm({
+                        ...registerForm,
+                        firstName: e.target.value,
+                      })
+                    }
+                    required
+                  />
+
+                  <input
+                    placeholder="Last name"
+                    value={registerForm.lastName}
+                    onChange={e =>
+                      setRegisterForm({
+                        ...registerForm,
+                        lastName: e.target.value,
+                      })
+                    }
+                    required
+                  />
+
+                  <input
+                    placeholder="Phone"
+                    value={registerForm.phone}
+                    onChange={e =>
+                      setRegisterForm({
+                        ...registerForm,
+                        phone: e.target.value,
+                      })
+                    }
+                    required
+                  />
+
+                  <input
+                    placeholder="ZIP code"
+                    value={registerForm.zipCode}
+                    onChange={e =>
+                      setRegisterForm({
+                        ...registerForm,
+                        zipCode: e.target.value,
+                      })
+                    }
+                    required
+                  />
+                </div>
+
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={registerForm.email}
+                  onChange={e =>
+                    setRegisterForm({
+                      ...registerForm,
+                      email: e.target.value,
+                    })
+                  }
+                  required
+                />
+
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={registerForm.password}
+                  onChange={e =>
+                    setRegisterForm({
+                      ...registerForm,
+                      password: e.target.value,
+                    })
+                  }
+                  required
+                />
+
+                <button
+                  className="primary-button large"
+                  disabled={loading}
+                >
+                  {loading
+                    ? 'Creating account...'
+                    : 'Create account'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
       )}
-    </nav>
-
-    <header>
-      <p className="eyebrow">EVENTS, MADE SIMPLE</p>
-      <h1>Find a reason<br />to get together.</h1>
-      <p className="intro">Discover memorable local experiences, or create one of your own.</p>
-      <a className="button light" href="#events">Browse events</a>
-    </header>
-
-    {notice && <div className="notice" role="status">{notice}<button aria-label="Close message" onClick={() => setNotice('')}>×</button></div>}
-
-    {loginOpen && <div className="modal-backdrop" onClick={() => setLoginOpen(false)}>
-      <form className="login-modal" onClick={e => e.stopPropagation()} onSubmit={login}>
-        <button className="modal-close" type="button" aria-label="Close login" onClick={() => setLoginOpen(false)}>×</button>
-        <p className="eyebrow">WELCOME BACK</p>
-        <h2>Log in</h2>
-        <input type="email" placeholder="Email address" value={loginForm.email} onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} required />
-        <input type="password" placeholder="Password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} required />
-        <button>Log in</button>
-      </form>
-    </div>}
-
-    <section id="events">
-      <div className="section-heading"><div><p className="eyebrow">WHAT’S HAPPENING</p><h2>Upcoming events</h2></div><div className="heading-actions"><span className="counter"><strong>{bookingsCount}</strong> {bookingsCount === 1 ? 'booking' : 'bookings'} made</span><button className="text-button" onClick={loadEvents}>Refresh</button></div></div>
-      {loading ? <p>Loading events…</p> : events.length ? <div className="event-grid">{events.map(item => <article className="event-card" key={item._id}><div className="date"><strong>{new Date(item.date).toLocaleDateString(undefined, { month: 'short' })}</strong><span>{new Date(item.date).getDate()}</span></div><div><p className="event-time">{new Date(item.date).toLocaleString()}</p><h3>{item.title}</h3><p>{item.description}</p><small>Hosted by {item.creator._id === currentUser?.userId ? 'you' : item.creator.email}</small><div className="card-bottom"><b>${item.price.toFixed(2)}</b><span className="card-actions">{item.creator._id === currentUser?.userId && <><button className="text-button" onClick={() => startEdit(item)}>Edit</button><button className="danger" onClick={() => deleteEvent(item)}>Delete</button></>}<button onClick={() => book(item._id)}>Book now</button></span></div></div></article>)}</div> : <div className="empty"><h3>No events yet</h3><p>Be the first to host something worth remembering.</p></div>}
-    </section>
-
-    {currentUser && <section className="bookings" id="bookings">
-      <div className="section-heading"><div><p className="eyebrow">YOUR SCHEDULE</p><h2>My bookings</h2></div><button className="text-button" onClick={() => loadBookings()}>Refresh</button></div>
-      {bookingsLoading ? <p>Loading bookings…</p> : bookings.length ? <div className="booking-list">{bookings.map(booking => <article className="booking-row" key={booking._id}><div><strong>{booking.event.title}</strong><span>{new Date(booking.event.date).toLocaleString()}</span></div><div><span>Booked on</span><strong>{new Date(booking.createdAt).toLocaleString()}</strong></div><div className="row-action"><button className="danger" onClick={() => cancelBooking(booking)}>Cancel booking</button></div></article>)}</div> : <div className="empty"><h3>No bookings yet</h3><p>Book an event and it will show up here.</p></div>}
-      <p className="booking-note">Only you can see your bookings.</p>
-    </section>}
-
-    <section className="host" id="host">
-      <div><p className="eyebrow">MAKE IT HAPPEN</p><h2>Host your next great gathering.</h2><p>Create an account, then log in to publish events and accept bookings.</p></div>
-      <div className="forms">
-        <form onSubmit={register}><h3>Create an account</h3><input type="text" placeholder="First name" value={account.firstName} onChange={e => setAccount({ ...account, firstName: e.target.value })} /><input type="text" placeholder="Last name" value={account.lastName} onChange={e => setAccount({ ...account, lastName: e.target.value })} /><input type="tel" placeholder="Phone number" value={account.phone} onChange={e => setAccount({ ...account, phone: e.target.value })} />
-        <input
-          type="text"
-          inputMode="numeric"
-          maxLength="5"
-          placeholder="ZIP Code"
-          value={account.zipCode}
-          required
-          onChange={(e) => setAccount({ ...account, zipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })}
-        /><input type="email" placeholder="Email address" value={account.email} onChange={e => setAccount({ ...account, email: e.target.value })} required /><input type="password" placeholder="Password (6+ characters)" minLength="6" value={account.password} onChange={e => setAccount({ ...account, password: e.target.value })} required /><button>Create account</button></form>
-        <form onSubmit={saveEvent}><h3>{editingId ? 'Edit your event' : 'Publish an event'}</h3><input type="text" inputMode="numeric" maxLength="5" placeholder="Event ZIP Code" value={event.zipCode} onChange={e => setEvent({ ...event, zipCode: e.target.value.replace(/\D/g, '').slice(0, 5) })} required /><input placeholder="Event title" value={event.title} onChange={e => setEvent({ ...event, title: e.target.value })} required /><textarea placeholder="Tell people what to expect" value={event.description} onChange={e => setEvent({ ...event, description: e.target.value })} required /><div className="split"><input type="number" min="0" step="0.01" placeholder="Price" value={event.price} onChange={e => setEvent({ ...event, price: e.target.value })} required /><input type="datetime-local" value={event.date} onChange={e => setEvent({ ...event, date: e.target.value })} required /></div><button>{editingId ? 'Save changes' : 'Publish event'}</button>{editingId && <button type="button" className="text-button" onClick={cancelEdit}>Cancel edit</button>}</form>
-      </div>
-    </section>
-  </main>
+    </div>
+  )
 }
 
 export default App
