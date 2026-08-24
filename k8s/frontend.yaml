@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: event-booking-frontend:2.1
+          image: event-booking-frontend:3.3
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

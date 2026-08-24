@@ -161,6 +161,49 @@ query QuoteRide($input: RideQuoteInput!) {
   }
 }`
 
+const requestRideMutation = `
+mutation RequestRide(
+  $pickup: RideLocationInput!
+  $destination: RideLocationInput!
+  $distanceMiles: Float!
+  $durationMinutes: Float!
+  $surgeMultiplier: Float
+) {
+  requestRide(
+    pickup: $pickup
+    destination: $destination
+    distanceMiles: $distanceMiles
+    durationMinutes: $durationMinutes
+    surgeMultiplier: $surgeMultiplier
+  ) {
+    _id
+    distanceMiles
+    durationMinutes
+    estimatedFare
+    finalFare
+    driverAmount
+    platformAmount
+    surgeMultiplier
+    status
+    paymentStatus
+    createdAt
+    rider {
+      _id
+      firstName
+      lastName
+    }
+    driver {
+      _id
+      status
+      online
+      vehicleMake
+      vehicleModel
+      vehicleColor
+      licensePlate
+    }
+  }
+}`
+
 const loginMutation = `
 mutation Login($loginInput: LoginInput!) {
   login(loginInput: $loginInput) {
@@ -433,6 +476,48 @@ function App() {
 
     return () => observer.disconnect()
   }, [page, events.length, bookings.length])
+
+  const requestRide = async () => {
+    if (!session?.token) {
+      setShowAuth(true)
+      setAuthMode('login')
+      fail('Please log in to request a ride.')
+      return
+    }
+
+    setRideLoading(true)
+    setError('')
+    setNotice('')
+
+    try {
+      const data = await request(requestRideMutation, {
+        pickup: {
+          address: ride.pickup,
+          lat: 0,
+          lng: 0,
+        },
+        destination: {
+          address: ride.destination,
+          lat: 0,
+          lng: 0,
+        },
+        distanceMiles: Number(ride.distanceMiles),
+        durationMinutes: Number(ride.durationMinutes),
+        surgeMultiplier: Number(ride.surgeMultiplier || 1),
+      })
+
+      if (data?.requestRide) {
+        flash(
+          `Ride requested successfully. Status: ${data.requestRide.status}`
+        )
+        setRideQuote(null)
+      }
+    } catch (err) {
+      fail(err.message)
+    } finally {
+      setRideLoading(false)
+    }
+  }
 
   const login = async (e) => {
     e.preventDefault()
@@ -1038,13 +1123,10 @@ function App() {
 
                     <button
                       className="primary-button large"
-                      onClick={() =>
-                        flash(
-                          'Ride request UI is ready. Ride creation must be added to the GraphQL API before a ride can actually be requested.'
-                        )
-                      }
+                      onClick={requestRide}
+                      disabled={rideLoading}
                     >
-                      Request ride
+                      {rideLoading ? 'Requesting...' : 'Request ride'}
                     </button>
                   </>
                 ) : (

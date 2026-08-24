@@ -118,6 +118,19 @@ module.exports = {
         return social.userObject(foundUser);
     },
 
+    profile: async (args, context) => {
+        const currentUser = await requireAuth(
+            context,
+            'Please log in to view your profile.'
+        );
+
+        if (String(args.userId) !== String(currentUser._id)) {
+            throw new Error('You can only view your own profile.');
+        }
+
+        return social.userObject(currentUser);
+    },
+
     users: async () => {
         const users = await User.find({})
             .select('-password')
