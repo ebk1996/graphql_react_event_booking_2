@@ -345,6 +345,328 @@ module.exports = {
         };
     },
 
+    requestRide: async (args, context) => {
+        const currentUser = await requireAuth(
+            context,
+            'Please log in to request a ride.'
+        );
+
+        const distanceMiles = Number(args.distanceMiles);
+        const durationMinutes = Number(args.durationMinutes);
+        const surgeMultiplier = Number(args.surgeMultiplier || 1);
+
+        if (!Number.isFinite(distanceMiles) || distanceMiles < 0) {
+            throw new Error('Invalid distance.');
+        }
+
+        if (!Number.isFinite(durationMinutes) || durationMinutes < 0) {
+            throw new Error('Invalid duration.');
+        }
+
+        if (!Number.isFinite(surgeMultiplier) || surgeMultiplier < 1) {
+            throw new Error('Invalid surge multiplier.');
+        }
+
+        const fare = calculateFare({
+            distanceMiles,
+            durationMinutes,
+            surgeMultiplier,
+        });
+
+        const ride = new Ride({
+            rider: currentUser._id,
+            driver: null,
+
+            pickup: {
+                address: String(args.pickup.address).trim(),
+                lat: Number(args.pickup.lat),
+                lng: Number(args.pickup.lng),
+            },
+
+            destination: {
+                address: String(args.destination.address).trim(),
+                lat: Number(args.destination.lat),
+                lng: Number(args.destination.lng),
+            },
+
+            distanceMiles: fare.distanceMiles,
+            durationMinutes: fare.durationMinutes,
+
+            baseFare: fare.baseFare,
+            estimatedFare: fare.estimatedFare,
+
+            driverAmount: fare.driverAmount,
+            platformAmount: fare.platformAmount,
+
+            surgeMultiplier: fare.surgeMultiplier,
+
+            status: 'REQUESTED',
+            paymentStatus: 'PENDING',
+        });
+
+        const saved = await ride.save();
+
+        return {
+            ...saved._doc,
+            _id: saved.id,
+            rider: social.userObject(currentUser),
+            driver: null,
+            createdAt: new Date(saved.createdAt).toISOString(),
+        };
+    },
+
+    acceptRide: async (args, context) => {
+        const currentUser = await requireAuth(
+            context,
+            'Please log in to accept a ride.'
+        );
+
+        const driver = await Driver.findOne({
+            user: currentUser._id,
+        });
+
+        if (!driver) {
+            throw new Error('Driver profile not found.');
+        }
+
+        if (driver.status !== 'APPROVED') {
+            throw new Error('Only approved drivers can accept rides.');
+        }
+
+        if (!driver.online) {
+            throw new Error('Driver must be online to accept rides.');
+        }
+
+        const ride = await Ride.findById(args.rideId);
+
+        if (!ride) {
+            throw new Error('Ride not found.');
+        }
+
+        if (ride.status !== 'REQUESTED') {
+            throw new Error('Ride is no longer available.');
+        }
+
+        ride.driver = driver._id;
+        ride.status = 'ACCEPTED';
+
+        const saved = await ride.save();
+
+        return {
+            ...saved._doc,
+            _id: saved.id,
+            rider: await user(saved.rider),
+            driver: {
+                ...driver._doc,
+                _id: driver.id,
+                user: social.userObject(currentUser),
+            },
+            createdAt: new Date(saved.createdAt).toISOString(),
+        };
+    },
+
+    arriveRide: async (args, context) => {
+        const currentUser = await requireAuth(
+            context,
+            'Please log in to update the ride.'
+        );
+
+        const driver = await Driver.findOne({
+            user: currentUser._id,
+        });
+
+        if (!driver) {
+            throw new Error('Driver profile not found.');
+        }
+
+        const ride = await Ride.findById(args.rideId);
+
+        if (!ride) {
+            throw new Error('Ride not found.');
+        }
+
+        if (!ride.driver || String(ride.driver) !== String(driver._id)) {
+            throw new Error('You are not assigned to this ride.');
+        }
+
+        if (ride.status !== 'ACCEPTED') {
+            throw new Error('Ride must be accepted before arrival.');
+        }
+
+        ride.status = 'DRIVER_ARRIVING';
+
+        const saved = await ride.save();
+
+        return {
+            ...saved._doc,
+            _id: saved.id,
+            rider: await user(saved.rider),
+            driver: {
+                ...driver._doc,
+                _id: driver.id,
+                user: social.userObject(currentUser),
+            },
+            createdAt: new Date(saved.createdAt).toISOString(),
+        };
+    },
+
+    startRide: async (args, context) => {
+        const currentUser = await requireAuth(
+            context,
+            'Please log in to start the ride.'
+        );
+
+        const driver = await Driver.findOne({
+            user: currentUser._id,
+        });
+
+        if (!driver) {
+            throw new Error('Driver profile not found.');
+        }
+
+        const ride = await Ride.findById(args.rideId);
+
+        if (!ride) {
+            throw new Error('Ride not found.');
+        }
+
+        if (!ride.driver || String(ride.driver) !== String(driver._id)) {
+            throw new Error('You are not assigned to this ride.');
+        }
+
+        if (
+            ride.status !== 'DRIVER_ARRIVING' &&
+            ride.status !== 'DRIVER_ARRIVED'
+        ) {
+            throw new Error('Driver must arrive before starting the ride.');
+        }
+
+        ride.status = 'IN_PROGRESS';
+
+        const saved = await ride.save();
+
+        return {
+            ...saved._doc,
+            _id: saved.id,
+            rider: await user(saved.rider),
+            driver: {
+                ...driver._doc,
+                _id: driver.id,
+                user: social.userObject(currentUser),
+            },
+            createdAt: new Date(saved.createdAt).toISOString(),
+        };
+    },
+
+    completeRide: async (args, context) => {
+        const currentUser = await requireAuth(
+            context,
+            'Please log in to complete the ride.'
+        );
+
+        const driver = await Driver.findOne({
+            user: currentUser._id,
+        });
+
+        if (!driver) {
+            throw new Error('Driver profile not found.');
+        }
+
+        const ride = await Ride.findById(args.rideId);
+
+        if (!ride) {
+            throw new Error('Ride not found.');
+        }
+
+        if (!ride.driver || String(ride.driver) !== String(driver._id)) {
+            throw new Error('You are not assigned to this ride.');
+        }
+
+        if (ride.status !== 'IN_PROGRESS') {
+            throw new Error('Ride must be in progress before completion.');
+        }
+
+        ride.status = 'COMPLETED';
+        ride.finalFare = ride.estimatedFare;
+        ride.paymentStatus = 'CAPTURED';
+
+        const saved = await ride.save();
+
+        driver.completedRides = Number(driver.completedRides || 0) + 1;
+        driver.totalEarnings =
+            Number(driver.totalEarnings || 0) + Number(saved.driverAmount || 0);
+
+        await driver.save();
+
+        return {
+            ...saved._doc,
+            _id: saved.id,
+            rider: await user(saved.rider),
+            driver: {
+                ...driver._doc,
+                _id: driver.id,
+                user: social.userObject(currentUser),
+            },
+            createdAt: new Date(saved.createdAt).toISOString(),
+        };
+    },
+
+    cancelRide: async (args, context) => {
+        const currentUser = await requireAuth(
+            context,
+            'Please log in to cancel the ride.'
+        );
+
+        const ride = await Ride.findById(args.rideId);
+
+        if (!ride) {
+            throw new Error('Ride not found.');
+        }
+
+        const isRider =
+            String(ride.rider) === String(currentUser._id);
+
+        const driver =
+            ride.driver
+                ? await Driver.findById(ride.driver)
+                : null;
+
+        const isDriver =
+            driver &&
+            String(driver.user) === String(currentUser._id);
+
+        if (!isRider && !isDriver) {
+            throw new Error('You are not authorized to cancel this ride.');
+        }
+
+        if (
+            ride.status === 'COMPLETED' ||
+            ride.status === 'CANCELLED'
+        ) {
+            throw new Error('Ride cannot be cancelled.');
+        }
+
+        ride.status = 'CANCELLED';
+
+        const saved = await ride.save();
+
+        return {
+            ...saved._doc,
+            _id: saved.id,
+            rider: await user(saved.rider),
+            driver: driver
+                ? {
+                    ...driver._doc,
+                    _id: driver.id,
+                    user: social.userObject(
+                        await User.findById(driver.user)
+                    ),
+                }
+                : null,
+            createdAt: new Date(saved.createdAt).toISOString(),
+        };
+    },
+
     quoteRide: async (args) => {
         const {
             distanceMiles,

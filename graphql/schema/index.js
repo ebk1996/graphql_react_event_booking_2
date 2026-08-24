@@ -237,6 +237,20 @@ module.exports = buildSchema(`
     bookEvent(eventId: ID!): Booking
     cancelBooking(bookingId: ID!): Event
 
+    requestRide(
+      pickup: RideLocationInput!
+      destination: RideLocationInput!
+      distanceMiles: Float!
+      durationMinutes: Float!
+      surgeMultiplier: Float
+    ): Ride!
+
+    acceptRide(rideId: ID!): Ride!
+    arriveRide(rideId: ID!): Ride!
+    startRide(rideId: ID!): Ride!
+    completeRide(rideId: ID!): Ride!
+    cancelRide(rideId: ID!): Ride!
+
     applyAsDriver(driverInput: DriverInput!): Driver!
     updateDriver(driverInput: DriverInput!): Driver!
     setDriverOnline(online: Boolean!): Driver!
