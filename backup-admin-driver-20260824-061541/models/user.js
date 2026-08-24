@@ -28,29 +28,6 @@ const userSchema = new Schema(
       match: /^\d{5}$/,
     },
 
-    role: {
-    type: String,
-    enum: ['user', 'driver', 'admin'],
-    default: 'user',
-  },
-  driverApproved: {
-    type: Boolean,
-    default: false,
-  },
-  vehicleApproved: {
-    type: Boolean,
-    default: false,
-  },
-  driverStatus: {
-    type: String,
-    enum: ['none', 'pending', 'approved', 'denied'],
-    default: 'none',
-  },
-  vehicleStatus: {
-    type: String,
-    enum: ['none', 'pending', 'approved', 'denied'],
-    default: 'none',
-  },
     email: {
       type: String,
       required: true,

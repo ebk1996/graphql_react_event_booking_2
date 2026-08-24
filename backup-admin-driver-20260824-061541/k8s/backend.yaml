@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: event-booking-api:1.19
+          image: event-booking-api:1.12
           imagePullPolicy: IfNotPresent
 
           ports:
@@ -45,24 +45,6 @@ spec:
                 secretKeyRef:
                   name: backend-secret
                   key: JWT_SECRET
-
-            - name: STRIPE_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: backend-secret
-                  key: STRIPE_SECRET_KEY
-
-            - name: STRIPE_PUBLISHABLE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: backend-secret
-                  key: STRIPE_PUBLISHABLE_KEY
-
-            - name: STRIPE_WEBHOOK_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: backend-secret
-                  key: STRIPE_WEBHOOK_SECRET
 
 
           readinessProbe:

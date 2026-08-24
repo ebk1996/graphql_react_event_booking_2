@@ -51,7 +51,7 @@ const userSchema = new Schema(
     enum: ['none', 'pending', 'approved', 'denied'],
     default: 'none',
   },
-    email: {
+  email:
       type: String,
       required: true,
       unique: true,

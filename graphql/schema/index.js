@@ -1,6 +1,11 @@
 const { buildSchema } = require('graphql');
 
 module.exports = buildSchema(`
+  input LoginInput {
+    email: String!
+    password: String!
+  }
+
   type Booking {
     _id: ID!
     event: Event!
@@ -9,42 +14,13 @@ module.exports = buildSchema(`
     updatedAt: String!
   }
 
-  type HostBooking {
-    _id: ID!
-    event: Event!
-    user: User!
-    createdAt: String!
-    updatedAt: String!
-  }
-
-  type AppNotification {
-    _id: ID!
-    type: String!
-    message: String!
-    sender: User
-    recipient: User
-    read: Boolean!
-    createdAt: String!
-  }
-
-  type Notification {
-    _id: ID!
-    type: String!
-    message: String!
-    booking: Booking
-    event: Event
-    user: User
-    createdAt: String!
-  }
-
   type Event {
     _id: ID!
     title: String!
     description: String!
     price: Float!
     date: String!
-    zipCode: String!
-    imageUrl: String
+    zipCode: String
     creator: User!
   }
 
@@ -53,46 +29,78 @@ module.exports = buildSchema(`
     firstName: String
     lastName: String
     phone: String
-    zipCode: String!
-    email: String!
-    password: String
-    bio: String
-    profileImage: String
-    followerCount: Int!
-    followingCount: Int!
-    createdEvents: [Event!]
-    isAdmin: Boolean!
-  }
-
-  type Comment {
-    _id: ID!
-    text: String!
-    event: Event!
-    user: User!
-    likeCount: Int!
-    likedByMe: Boolean!
-    createdAt: String!
-  }
-
-  type Message {
-    _id: ID!
-    sender: User!
-    recipient: User!
-    text: String!
-    read: Boolean!
-    createdAt: String!
-  }
-
-  type RideCoordinates {
-    lat: Float!
-    lng: Float!
-  }
-
-  type RideLocation {
-    address: String!
-    lat: Float!
-    lng: Float!
     zipCode: String
+    email: String!
+    role: String!
+    createdEvents: [Event!]
+  }
+
+  type Notification {
+    _id: ID!
+    type: String
+    message: String
+    createdAt: String
+    event: Event
+  }
+
+  type AuthData {
+    userId: ID!
+    email: String!
+    role: String!
+    token: String!
+    tokenExpiration: Int!
+  }
+
+  type Driver {
+    _id: ID!
+    user: User
+    firstName: String
+    lastName: String
+    phone: String
+    vehicleMake: String!
+    vehicleModel: String!
+    vehicleColor: String!
+    vehicleYear: Int!
+    licensePlate: String!
+    status: String!
+    vehicleStatus: String!
+    online: Boolean!
+    deniedReason: String
+    vehicleDeniedReason: String
+    completedRides: Int!
+    totalEarnings: Float!
+    rating: Float!
+    createdAt: String
+    updatedAt: String
+  }
+
+  type Ride {
+    _id: ID!
+    rider: User
+    driver: Driver
+    pickup: String!
+    destination: String!
+    distanceMiles: Float
+    durationMinutes: Float
+    fare: Float
+    estimatedFare: Float
+    finalFare: Float
+    driverAmount: Float
+    platformAmount: Float
+    surgeMultiplier: Float
+    status: String!
+    paymentStatus: String
+    paymentIntentId: String
+    createdAt: String
+    updatedAt: String
+  }
+
+  type RideQuote {
+    distanceMiles: Float!
+    durationMinutes: Float!
+    estimatedFare: Float!
+    driverAmount: Float!
+    platformAmount: Float!
   }
 
   type GeocodeResult {
@@ -102,109 +110,12 @@ module.exports = buildSchema(`
     zipCode: String
   }
 
-  type Driver {
-    _id: ID!
-    user: User!
-    status: String!
-    online: Boolean!
-    vehicleMake: String
-    vehicleModel: String
-    vehicleYear: Int
-    vehicleColor: String
-    licensePlate: String
-    zipCode: String
-    currentLocation: RideCoordinates
-    rating: Float!
-    totalEarnings: Float!
-    completedRides: Int!
-    denialReason: String
-  }
-
-  type Ride {
-    _id: ID!
-    rider: User!
-    driver: Driver
-    pickup: RideLocation
-    destination: RideLocation
-    pickupZip: String
-    destinationZip: String
-    distanceMiles: Float!
-    durationMinutes: Float!
-    estimatedFare: Float!
-    finalFare: Float
-    driverAmount: Float!
-    platformAmount: Float!
-    surgeMultiplier: Float!
-    status: String!
-    paymentStatus: String!
-    paymentIntentId: String
-    stripePaymentStatus: String
-    routeGeometry: [[Float]]
-    driverLocation: RideCoordinates
-    createdAt: String!
-  }
-
-  type RideQuote {
-    distanceMiles: Float!
-    durationMinutes: Float!
-    estimatedFare: Float!
-    driverAmount: Float!
-    platformAmount: Float!
-    pickup: RideLocation
-    destination: RideLocation
-    routeGeometry: [[Float]]
-  }
-
-  type Card {
-    _id: ID!
-    brand: String!
-    last4: String!
-    expMonth: Int!
-    expYear: Int!
-    defaultCard: Boolean!
-  }
-
-  type StripeConfig {
-    publishableKey: String!
-    configured: Boolean!
-  }
-
   type PaymentIntentResult {
     paymentIntentId: String!
     clientSecret: String
     status: String!
     amount: Float!
     paymentStatus: String!
-  }
-
-  type AuthData {
-    userId: ID!
-    email: String!
-    token: String!
-    tokenExpiration: Int!
-  }
-
-  input UserInput {
-    firstName: String
-    lastName: String
-    phone: String
-    zipCode: String!
-    email: String!
-    password: String!
-  }
-
-  input LoginInput {
-    email: String!
-    password: String!
-  }
-
-  input EventInput {
-    title: String!
-    description: String!
-    price: Float!
-    date: String!
-    zipCode: String!
-    imageUrl: String
   }
 
   input RideLocationInput {
@@ -222,101 +133,70 @@ module.exports = buildSchema(`
     surgeMultiplier: Float
   }
 
+  input UserInput {
+    firstName: String
+    lastName: String
+    phone: String
+    zipCode: String
+    email: String!
+    password: String!
+  }
+
+  input EventInput {
+    title: String!
+    description: String!
+    price: Float!
+    date: String!
+    zipCode: String
+  }
+
   input DriverInput {
+    firstName: String
+    lastName: String
+    phone: String
     vehicleMake: String!
     vehicleModel: String!
-    vehicleYear: Int!
     vehicleColor: String!
+    vehicleYear: Int!
     licensePlate: String!
   }
 
   type RootQuery {
     events: [Event!]!
     bookings: [Booking!]!
-    hostBookings: [HostBooking!]!
-    notifications: [Notification!]!
-    appNotifications: [AppNotification!]!
     bookingsCount: Int!
 
     me: User
-    profile(userId: ID!): User!
-    comments(eventId: ID!): [Comment!]!
-    myMessages: [Message!]!
-    conversation(userId: ID!): [Message!]!
-    unreadMessageCount: Int!
+    myDriver: Driver
+    notifications: [Notification!]!
 
     quoteRide(input: RideQuoteInput!): RideQuote!
-    myDriver: Driver
-    myRides: [Ride!]!
-    activeRide: Ride
-    incomingRides: [Ride!]!
-    driverActiveRide: Ride
-    ride(rideId: ID!): Ride
-    myCards: [Card!]!
-    stripeConfig: StripeConfig!
-    geocodeAddress(query: String!): [GeocodeResult!]!
     reverseGeocode(lat: Float!, lng: Float!): GeocodeResult
 
-    adminPendingDrivers: [Driver!]!
     adminDrivers: [Driver!]!
-    adminRides: [Ride!]!
+    availableRides: [Ride!]!
+    myRides: [Ride!]!
   }
 
   type RootMutation {
     createEvent(eventInput: EventInput): Event
     updateEvent(eventId: ID!, eventInput: EventInput): Event
     deleteEvent(eventId: ID!): Event
-
     createUser(userInput: UserInput): User
     login(loginInput: LoginInput!): AuthData!
-
-    updateProfile(
-      firstName: String
-      lastName: String
-      phone: String
-      bio: String
-      profileImage: String
-    ): User!
-
-    followUser(userId: ID!): User!
-    unfollowUser(userId: ID!): User!
-
-    createComment(eventId: ID!, text: String!): Comment!
-    deleteComment(commentId: ID!): Boolean!
-    likeComment(commentId: ID!): Comment!
-    unlikeComment(commentId: ID!): Comment!
-
-    sendMessage(userId: ID!, text: String!): Message!
-    markMessageRead(messageId: ID!): Message!
-    markNotificationRead(notificationId: ID!): AppNotification!
-
     bookEvent(eventId: ID!): Booking
     cancelBooking(bookingId: ID!): Event
 
-    requestRide(
-      pickup: RideLocationInput!
-      destination: RideLocationInput!
-      distanceMiles: Float
-      durationMinutes: Float
-      surgeMultiplier: Float
-      paymentIntentId: String!
-    ): Ride!
+    applyAsDriver(driverInput: DriverInput!): Driver
 
-    acceptRide(rideId: ID!): Ride!
-    denyRide(rideId: ID!): Ride!
-    arriveRide(rideId: ID!): Ride!
-    setDriverEnRoute(rideId: ID!): Ride!
-    markDriverArrived(rideId: ID!): Ride!
-    startRide(rideId: ID!): Ride!
-    completeRide(rideId: ID!): Ride!
-    cancelRide(rideId: ID!): Ride!
+    approveDriver(driverId: ID!): Driver
+    denyDriver(driverId: ID!, reason: String): Driver
 
-    applyAsDriver(driverInput: DriverInput!): Driver!
-    updateDriver(driverInput: DriverInput!): Driver!
-    setDriverOnline(online: Boolean!): Driver!
-    updateDriverLocation(lat: Float!, lng: Float!): Driver!
+    approveVehicle(driverId: ID!): Driver
+    denyVehicle(driverId: ID!, reason: String): Driver
 
-    savePaymentMethod(paymentMethodId: String!): Card!
+    setDriverOnline(online: Boolean!): Driver
+
     createRidePaymentIntent(
       pickup: RideLocationInput!
       destination: RideLocationInput!
@@ -326,9 +206,20 @@ module.exports = buildSchema(`
       surgeMultiplier: Float
     ): PaymentIntentResult!
 
-    approveDriver(driverId: ID!): Driver!
-    denyDriver(driverId: ID!, reason: String): Driver!
-    captureRidePayment(rideId: ID!): Ride!
+    requestRide(
+      pickup: RideLocationInput!
+      destination: RideLocationInput!
+      distanceMiles: Float
+      durationMinutes: Float
+      surgeMultiplier: Float
+      paymentIntentId: String
+      paymentMethodId: String
+    ): Ride
+
+    acceptRide(rideId: ID!): Ride
+    rejectRide(rideId: ID!): Ride
+    startRide(rideId: ID!): Ride
+    completeRide(rideId: ID!): Ride
   }
 
   schema {

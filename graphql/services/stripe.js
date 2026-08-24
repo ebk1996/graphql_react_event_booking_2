@@ -1,6 +1,16 @@
 const Stripe = require('stripe');
 
 const PLACEHOLDER_KEYS = new Set(['', 'sk_test_xxx', 'whsec_xxx']);
+const STATEMENT_DESCRIPTOR = 'EVENTS360';
+const OPEN_AUTH_STATUSES = new Set([
+  'requires_capture',
+  'requires_confirmation',
+  'requires_action',
+  'requires_payment_method',
+  'processing',
+]);
+
+let statementDescriptorReady = null;
 
 function stripeSecretKey() {
   return String(process.env.STRIPE_SECRET_KEY || '').trim();
@@ -99,6 +109,77 @@ async function attachPaymentMethod(user, paymentMethodId) {
   return { customer, paymentMethod: refreshed };
 }
 
+async function ensureStatementDescriptor() {
+  if (statementDescriptorReady) {
+    return statementDescriptorReady;
+  }
+
+  statementDescriptorReady = (async () => {
+    try {
+      const stripe = getStripe();
+      const account = await stripe.accounts.retrieve();
+      await stripe.accounts.update(account.id, {
+        settings: {
+          payments: {
+            statement_descriptor: STATEMENT_DESCRIPTOR,
+          },
+          card_payments: {
+            statement_descriptor_prefix: STATEMENT_DESCRIPTOR.slice(0, 10),
+          },
+        },
+      });
+    } catch (err) {
+      console.warn(
+        'Could not update Stripe statement descriptor:',
+        err.message
+      );
+    }
+  })();
+
+  return statementDescriptorReady;
+}
+
+async function listOpenRideAuthorizations(customerId) {
+  const stripe = getStripe();
+  const intents = await stripe.paymentIntents.list({
+    customer: customerId,
+    limit: 20,
+  });
+
+  return intents.data.filter(
+    (intent) =>
+      intent.metadata &&
+      intent.metadata.type === 'ride' &&
+      OPEN_AUTH_STATUSES.has(intent.status)
+  );
+}
+
+async function releaseOpenRideAuthorizations(customerId, exceptId) {
+  const stripe = getStripe();
+  const open = await listOpenRideAuthorizations(customerId);
+
+  await Promise.all(
+    open
+      .filter((intent) => intent.id !== exceptId)
+      .filter((intent) =>
+        ['requires_capture', 'requires_confirmation', 'requires_action'].includes(
+          intent.status
+        )
+      )
+      .map((intent) =>
+        stripe.paymentIntents
+          .cancel(intent.id, { cancellation_reason: 'duplicate' })
+          .catch((err) => {
+            console.warn(
+              'Could not cancel duplicate ride authorization:',
+              intent.id,
+              err.message
+            );
+          })
+      )
+  );
+}
+
 async function createAndConfirmPaymentIntent({
   user,
   amount,
@@ -111,25 +192,62 @@ async function createAndConfirmPaymentIntent({
     throw new Error('Fare amount is too small to charge.');
   }
 
-  const { customer, paymentMethod } = await attachPaymentMethod(user, paymentMethodId);
+  await ensureStatementDescriptor();
 
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: cents,
-    currency: 'usd',
-    customer: customer.id,
-    payment_method: paymentMethod.id,
-    capture_method: 'manual',
-    confirm: true,
-    off_session: false,
-    automatic_payment_methods: {
-      enabled: true,
-      allow_redirects: 'never',
+  const { customer, paymentMethod } = await attachPaymentMethod(user, paymentMethodId);
+  const userId = String(user._id);
+  const rideMeta = {
+    userId,
+    type: 'ride',
+    ...metadata,
+  };
+
+  const open = await listOpenRideAuthorizations(customer.id);
+  const reusable = open.find(
+    (intent) =>
+      intent.status === 'requires_capture' &&
+      Number(intent.amount) === cents &&
+      String(intent.metadata?.userId || '') === userId
+  );
+
+  if (reusable) {
+    await releaseOpenRideAuthorizations(customer.id, reusable.id);
+    return reusable;
+  }
+
+  await releaseOpenRideAuthorizations(customer.id);
+
+  const window = Math.floor(Date.now() / 15000);
+  const idempotencyKey = [
+    'ride-auth',
+    userId,
+    String(cents),
+    String(rideMeta.distanceMiles || ''),
+    String(rideMeta.durationMinutes || ''),
+    String(window),
+  ].join('-');
+
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: cents,
+      currency: 'usd',
+      customer: customer.id,
+      payment_method: paymentMethod.id,
+      capture_method: 'manual',
+      confirm: true,
+      off_session: false,
+      description: 'Events360 ride',
+      statement_descriptor_suffix: STATEMENT_DESCRIPTOR,
+      automatic_payment_methods: {
+        enabled: true,
+        allow_redirects: 'never',
+      },
+      metadata: rideMeta,
     },
-    metadata: {
-      userId: String(user._id),
-      ...metadata,
-    },
-  });
+    { idempotencyKey }
+  );
+
+  await releaseOpenRideAuthorizations(customer.id, paymentIntent.id);
 
   return paymentIntent;
 }
@@ -141,6 +259,44 @@ async function retrievePaymentIntent(paymentIntentId) {
     throw new Error('A Stripe payment intent is required.');
   }
   return stripe.paymentIntents.retrieve(id);
+}
+
+async function chargeRideOnComplete({
+  user,
+  amount,
+  paymentMethodId,
+  metadata = {},
+}) {
+  const stripe = getStripe();
+  const cents = dollarsToCents(amount);
+  if (!Number.isFinite(cents) || cents < 50) {
+    throw new Error('Fare amount is too small to charge.');
+  }
+
+  await ensureStatementDescriptor();
+
+  const { customer, paymentMethod } = await attachPaymentMethod(
+    user,
+    paymentMethodId
+  );
+
+  return stripe.paymentIntents.create({
+    amount: cents,
+    currency: 'usd',
+    customer: customer.id,
+    payment_method: paymentMethod.id,
+    confirm: true,
+    off_session: true,
+    capture_method: 'automatic',
+    payment_method_types: ['card'],
+    description: 'Events360 ride',
+    statement_descriptor_suffix: STATEMENT_DESCRIPTOR,
+    metadata: {
+      userId: String(user._id),
+      type: 'ride',
+      ...metadata,
+    },
+  });
 }
 
 async function capturePaymentIntent(paymentIntentId) {
@@ -194,6 +350,7 @@ module.exports = {
   getOrCreateCustomer,
   attachPaymentMethod,
   createAndConfirmPaymentIntent,
+  chargeRideOnComplete,
   retrievePaymentIntent,
   capturePaymentIntent,
   cancelPaymentIntent,

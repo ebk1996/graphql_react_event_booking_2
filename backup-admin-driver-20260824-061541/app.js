@@ -18,47 +18,13 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Security middleware
 app.use(helmet({
-    contentSecurityPolicy: isProduction
-        ? {
-            directives: {
-                defaultSrc: ["'self'"],
-                scriptSrc: ["'self'", 'https://js.stripe.com'],
-                frameSrc: [
-                    "'self'",
-                    'https://js.stripe.com',
-                    'https://hooks.stripe.com',
-                ],
-                connectSrc: ["'self'", 'https://api.stripe.com'],
-                imgSrc: [
-                    "'self'",
-                    'data:',
-                    'https://*.stripe.com',
-                    'https://*.tile.openstreetmap.org',
-                    'https://tile.openstreetmap.org',
-                ],
-                styleSrc: ["'self'", "'unsafe-inline'"],
-            },
-        }
-        : false,
+    contentSecurityPolicy: isProduction ? undefined : false,
     crossOriginEmbedderPolicy: false,
 }));
 
 // CORS configuration
-const allowedOrigins = [
-    'https://events360.net',
-    'https://www.events360.net',
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-];
-
 const corsOptions = {
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-
-        return callback(new Error(`CORS blocked origin: ${origin}`));
-    },
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
 };
 app.use(cors(corsOptions));

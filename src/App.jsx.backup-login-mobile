@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import { loadStripe } from '@stripe/stripe-js'
 import {
@@ -7,7 +7,6 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js'
-import RideMapPicker from './components/rides/RideMapPicker.jsx'
 
 const sessionKey = 'link-current-user'
 
@@ -54,23 +53,6 @@ const formatDay = (value) => {
 
   return String(date.getDate())
 }
-
-const toDateTimeLocal = (value) => {
-  const date = safeDate(value)
-
-  if (!date) return ''
-
-  const pad = (n) => String(n).padStart(2, '0')
-
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
-const isEventOwner = (item, user) =>
-  Boolean(
-    item?.creator?._id &&
-    user?.userId &&
-    String(item.creator._id) === String(user.userId)
-  )
 
 
 const readSession = () => {
@@ -169,9 +151,9 @@ query {
     vehicleYear
     vehicleColor
     licensePlate
-    completedRides
-    totalEarnings
     rating
+    totalEarnings
+    completedRides
   }
 }`
 
@@ -183,16 +165,6 @@ query QuoteRide($input: RideQuoteInput!) {
     estimatedFare
     driverAmount
     platformAmount
-  }
-}`
-
-const reverseGeocodeQuery = `
-query Reverse($lat: Float!, $lng: Float!) {
-  reverseGeocode(lat: $lat, lng: $lng) {
-    address
-    lat
-    lng
-    zipCode
   }
 }`
 
@@ -228,7 +200,7 @@ mutation RequestRide(
   $distanceMiles: Float!
   $durationMinutes: Float!
   $surgeMultiplier: Float
-  $paymentMethodId: String
+  $paymentIntentId: String!
 ) {
   requestRide(
     pickup: $pickup
@@ -236,7 +208,7 @@ mutation RequestRide(
     distanceMiles: $distanceMiles
     durationMinutes: $durationMinutes
     surgeMultiplier: $surgeMultiplier
-    paymentMethodId: $paymentMethodId
+    paymentIntentId: $paymentIntentId
   ) {
     _id
     distanceMiles
@@ -299,6 +271,8 @@ mutation Apply($driverInput: DriverInput!) {
     vehicleYear
     vehicleColor
     licensePlate
+    rating
+    totalEarnings
     completedRides
   }
 }`
@@ -314,6 +288,8 @@ mutation SetOnline($online: Boolean!) {
     vehicleYear
     vehicleColor
     licensePlate
+    rating
+    totalEarnings
     completedRides
   }
 }`
@@ -321,29 +297,6 @@ mutation SetOnline($online: Boolean!) {
 const createEventMutation = `
 mutation CreateEvent($eventInput: EventInput!) {
   createEvent(eventInput: $eventInput) {
-    _id
-    title
-  }
-}`
-
-const updateEventMutation = `
-mutation UpdateEvent($eventId: ID!, $eventInput: EventInput!) {
-  updateEvent(eventId: $eventId, eventInput: $eventInput) {
-    _id
-    title
-  }
-}`
-
-const deleteEventMutation = `
-mutation DeleteEvent($eventId: ID!) {
-  deleteEvent(eventId: $eventId) {
-    _id
-  }
-}`
-
-const cancelBookingMutation = `
-mutation CancelBooking($bookingId: ID!) {
-  cancelBooking(bookingId: $bookingId) {
     _id
     title
   }
@@ -379,167 +332,6 @@ mutation UpdateProfile(
   }
 }`
 
-
-const ADMIN_DRIVERS_QUERY = `
-query {
-  adminDrivers {
-    _id
-    firstName
-    lastName
-    phone
-    vehicleMake
-    vehicleModel
-    vehicleColor
-    vehicleYear
-    licensePlate
-    status
-    vehicleStatus
-    online
-    deniedReason
-    vehicleDeniedReason
-  }
-}`;
-
-const MY_DRIVER_QUERY = `
-query {
-  myDriver {
-    _id
-    firstName
-    lastName
-    phone
-    vehicleMake
-    vehicleModel
-    vehicleColor
-    vehicleYear
-    licensePlate
-    status
-    vehicleStatus
-    online
-    deniedReason
-    vehicleDeniedReason
-  }
-}`;
-
-const AVAILABLE_RIDES_QUERY = `
-query {
-  availableRides {
-    _id
-    pickup
-    destination
-    distanceMiles
-    durationMinutes
-    fare
-    status
-    createdAt
-    rider {
-      _id
-      firstName
-      lastName
-    }
-  }
-}`;
-
-const MY_RIDES_QUERY = `
-query {
-  myRides {
-    _id
-    pickup
-    destination
-    distanceMiles
-    durationMinutes
-    fare
-    status
-    createdAt
-    rider {
-      _id
-      firstName
-      lastName
-    }
-  }
-}`;
-
-const APPLY_DRIVER_MUTATION = `
-mutation Apply($driverInput: DriverInput!) {
-  applyAsDriver(driverInput: $driverInput) {
-    _id
-    status
-    vehicleStatus
-  }
-}`;
-
-const APPROVE_DRIVER_MUTATION = `
-mutation Approve($driverId: ID!) {
-  approveDriver(driverId: $driverId) {
-    _id
-    status
-  }
-}`;
-
-const DENY_DRIVER_MUTATION = `
-mutation Deny($driverId: ID!, $reason: String) {
-  denyDriver(driverId: $driverId, reason: $reason) {
-    _id
-    status
-  }
-}`;
-
-const APPROVE_VEHICLE_MUTATION = `
-mutation ApproveVehicle($driverId: ID!) {
-  approveVehicle(driverId: $driverId) {
-    _id
-    vehicleStatus
-  }
-}`;
-
-const DENY_VEHICLE_MUTATION = `
-mutation DenyVehicle($driverId: ID!, $reason: String) {
-  denyVehicle(driverId: $driverId, reason: $reason) {
-    _id
-    vehicleStatus
-  }
-}`;
-
-const DRIVER_ONLINE_MUTATION = `
-mutation Online($online: Boolean!) {
-  setDriverOnline(online: $online) {
-    _id
-    online
-  }
-}`;
-
-const ACCEPT_RIDE_MUTATION = `
-mutation Accept($rideId: ID!) {
-  acceptRide(rideId: $rideId) {
-    _id
-    status
-  }
-}`;
-
-const REJECT_RIDE_MUTATION = `
-mutation Reject($rideId: ID!) {
-  rejectRide(rideId: $rideId) {
-    _id
-    status
-  }
-}`;
-
-const START_RIDE_MUTATION = `
-mutation Start($rideId: ID!) {
-  startRide(rideId: $rideId) {
-    _id
-    status
-  }
-}`;
-
-const COMPLETE_RIDE_MUTATION = `
-mutation Complete($rideId: ID!) {
-  completeRide(rideId: $rideId) {
-    _id
-    status
-    paymentStatus
-  }
-}`;
-
 const emptyEvent = {
   title: '',
   description: '',
@@ -568,27 +360,11 @@ function App() {
 
   const [authMode, setAuthMode] = useState('login')
   const [showAuth, setShowAuth] = useState(false)
-  const [adminDrivers, setAdminDrivers] = useState([])
-  const [myDriver, setMyDriver] = useState(null)
-  const [availableRides, setAvailableRides] = useState([])
-  const [myRides, setMyRides] = useState([])
-  const [adminLoading, setAdminLoading] = useState(false)
-  const [driverLoadingPanel, setDriverLoadingPanel] = useState(false)
-
 
   const [loginForm, setLoginForm] = useState({
     email: '',
     password: '',
   })
-
-  const openAuthLogin = (e) => {
-    if (e) {
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    setAuthMode('login')
-    setShowAuth(true)
-  }
 
   const [registerForm, setRegisterForm] = useState({
     firstName: '',
@@ -600,15 +376,10 @@ function App() {
   })
 
   const [event, setEvent] = useState(emptyEvent)
-  const [editingId, setEditingId] = useState(null)
 
   const [ride, setRide] = useState({
     pickup: '',
     destination: '',
-    pickupLat: null,
-    pickupLng: null,
-    destLat: null,
-    destLng: null,
     distanceMiles: '',
     durationMinutes: '',
     surgeMultiplier: '1',
@@ -617,7 +388,6 @@ function App() {
   const [rideQuote, setRideQuote] = useState(null)
   const [rideLoading, setRideLoading] = useState(false)
   const [cardComplete, setCardComplete] = useState(false)
-  const rideRequestInFlight = useRef(false)
 
   const [driverForm, setDriverForm] = useState({
     vehicleMake: '',
@@ -719,38 +489,6 @@ function App() {
     }
   }, [session])
 
-  useEffect(() => {
-    if (page !== 'driver' || !session) return
-
-    loadDriverPanel()
-
-    const online = Boolean(myDriver?.online || driver?.online)
-    if (!online) return undefined
-
-    const timer = setInterval(() => {
-      loadDriverPanel()
-    }, 8000)
-
-    return () => clearInterval(timer)
-  }, [page, session, myDriver?.online, driver?.online])
-
-  const seenRideRequests = useRef(new Set())
-
-  useEffect(() => {
-    if (page !== 'driver') return
-    const fresh = availableRides.filter(
-      (item) => !seenRideRequests.current.has(item._id)
-    )
-    if (!fresh.length) return
-    fresh.forEach((item) => seenRideRequests.current.add(item._id))
-    flash(`${fresh.length} incoming ride request(s).`)
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification('New ride request', {
-        body: 'Open Driver to accept or deny the trip.',
-      })
-    }
-  }, [availableRides, page])
-
   // Reveal sections/cards as they enter the viewport.
   useEffect(() => {
     const elements = document.querySelectorAll('.reveal')
@@ -775,142 +513,16 @@ function App() {
     elements.forEach(element => observer.observe(element))
 
     return () => observer.disconnect()
-  }, [page, rideQuote])
-
-  const loadAdminDrivers = async () => {
-    if (session?.email?.toLowerCase() !== 'echolsbrysonkyle@gmail.com') return
-    setAdminLoading(true)
-    try {
-      const data = await request(ADMIN_DRIVERS_QUERY)
-      setAdminDrivers(data.adminDrivers || [])
-    } catch (err) {
-      fail(err.message)
-    } finally {
-      setAdminLoading(false)
-    }
-  }
-
-  const loadDriverPanel = async () => {
-    if (!session) return
-    setDriverLoadingPanel(true)
-    try {
-      const [driverData, rideData, myRideData] = await Promise.all([
-        request(MY_DRIVER_QUERY),
-        request(AVAILABLE_RIDES_QUERY).catch(() => ({ availableRides: [] })),
-        request(MY_RIDES_QUERY).catch(() => ({ myRides: [] })),
-      ])
-
-      setMyDriver(driverData.myDriver)
-      setAvailableRides(rideData.availableRides || [])
-      setMyRides(myRideData.myRides || [])
-    } catch (err) {
-      fail(err.message)
-    } finally {
-      setDriverLoadingPanel(false)
-    }
-  }
-
-  const approveDriver = async (id) => {
-    try {
-      await request(APPROVE_DRIVER_MUTATION, { driverId: id })
-      await loadAdminDrivers()
-      flash('Driver approved.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const denyDriver = async (id) => {
-    try {
-      await request(DENY_DRIVER_MUTATION, {
-        driverId: id,
-        reason: 'Denied by administrator.',
-      })
-      await loadAdminDrivers()
-      flash('Driver denied.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const approveVehicle = async (id) => {
-    try {
-      await request(APPROVE_VEHICLE_MUTATION, { driverId: id })
-      await loadAdminDrivers()
-      flash('Vehicle approved.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const denyVehicle = async (id) => {
-    try {
-      await request(DENY_VEHICLE_MUTATION, {
-        driverId: id,
-        reason: 'Vehicle denied by administrator.',
-      })
-      await loadAdminDrivers()
-      flash('Vehicle denied.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const acceptRide = async (id) => {
-    try {
-      await request(ACCEPT_RIDE_MUTATION, { rideId: id })
-      await loadDriverPanel()
-      flash('Ride accepted.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const rejectRide = async (id) => {
-    try {
-      await request(REJECT_RIDE_MUTATION, { rideId: id })
-      await loadDriverPanel()
-      flash('Ride declined. It remains available for other drivers.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const startAssignedRide = async (id) => {
-    try {
-      await request(START_RIDE_MUTATION, { rideId: id })
-      await loadDriverPanel()
-      flash('Trip started.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const completeAssignedRide = async (id) => {
-    try {
-      await request(COMPLETE_RIDE_MUTATION, { rideId: id })
-      await loadDriverPanel()
-      flash('Trip completed. Rider card charged.')
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const toggleDriverOnline = async () => {
-    try {
-      await request(DRIVER_ONLINE_MUTATION, {
-        online: !myDriver?.online,
-      })
-      await loadDriverPanel()
-    } catch (err) {
-      fail(err.message)
-    }
-  }
+  }, [page, events.length, bookings.length])
 
   const requestRide = async () => {
-    if (rideRequestInFlight.current || rideLoading) {
-      return
-    }
+    console.log('REQUEST RIDE CLICKED', {
+      hasSession: !!session?.token,
+      hasStripe: !!stripe,
+      hasElements: !!elements,
+      rideLoading,
+      rideQuote: !!rideQuote,
+    })
 
     if (!session?.token) {
       setShowAuth(true)
@@ -931,7 +543,6 @@ function App() {
       return
     }
 
-    rideRequestInFlight.current = true
     setRideLoading(true)
     setError('')
     setNotice('')
@@ -958,23 +569,39 @@ function App() {
         throw new Error('Stripe did not create a payment method.')
       }
 
-      if (
-        ride.pickupLat == null ||
-        ride.destLat == null
-      ) {
-        throw new Error('Pickup and destination must be selected on the map.')
-      }
-
       const pickup = {
-        address: ride.pickup || 'Pickup',
-        lat: Number(ride.pickupLat),
-        lng: Number(ride.pickupLng),
+        address: ride.pickup,
+        lat: 0,
+        lng: 0,
       }
 
       const destination = {
-        address: ride.destination || 'Destination',
-        lat: Number(ride.destLat),
-        lng: Number(ride.destLng),
+        address: ride.destination,
+        lat: 0,
+        lng: 0,
+      }
+
+      const paymentData = await request(
+        createRidePaymentIntentMutation,
+        {
+          pickup,
+          destination,
+          distanceMiles: Number(ride.distanceMiles),
+          durationMinutes: Number(ride.durationMinutes),
+          paymentMethodId,
+          surgeMultiplier: Number(
+            ride.surgeMultiplier || 1
+          ),
+        }
+      )
+
+      const paymentIntentId =
+        paymentData?.createRidePaymentIntent?.paymentIntentId
+
+      if (!paymentIntentId) {
+        throw new Error(
+          'Stripe payment authorization was not created.'
+        )
       }
 
       const data = await request(
@@ -982,34 +609,30 @@ function App() {
         {
           pickup,
           destination,
-          distanceMiles: Number(ride.distanceMiles || rideQuote?.distanceMiles),
-          durationMinutes: Number(
-            ride.durationMinutes || rideQuote?.durationMinutes
+          distanceMiles: Number(ride.distanceMiles),
+          durationMinutes: Number(ride.durationMinutes),
+          surgeMultiplier: Number(
+            ride.surgeMultiplier || 1
           ),
-          surgeMultiplier: 1,
-          paymentMethodId,
+          paymentIntentId,
         }
       )
 
       if (data?.requestRide) {
         flash(
-          `Ride requested. Drivers nearby can accept. Your card is charged only after the trip is complete.`
+          `Ride requested successfully. Status: ${data.requestRide.status}`
         )
         setRideQuote(null)
       }
     } catch (err) {
       fail(err.message)
     } finally {
-      rideRequestInFlight.current = false
       setRideLoading(false)
     }
   }
 
   const login = async (e) => {
-    if (e) e.preventDefault()
-
-    if (loading) return
-
+    e.preventDefault()
     setLoading(true)
 
     try {
@@ -1063,8 +686,6 @@ function App() {
     setDriver(null)
     setBookings([])
     setNotifications([])
-    setEditingId(null)
-    setEvent(emptyEvent)
     setPage('dashboard')
     flash('You have been logged out.')
   }
@@ -1093,90 +714,16 @@ function App() {
       return
     }
 
-    const eventInput = {
-      ...event,
-      price: Number(event.price),
-    }
-
     try {
-      if (editingId) {
-        await request(updateEventMutation, {
-          eventId: editingId,
-          eventInput,
-        })
-        setEditingId(null)
-        setEvent(emptyEvent)
-        flash('Event updated.')
-      } else {
-        await request(createEventMutation, { eventInput })
-        setEvent(emptyEvent)
-        flash('Event published.')
-      }
-
-      await loadEvents()
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const startEdit = (item) => {
-    setEditingId(item._id)
-    setEvent({
-      title: item.title || '',
-      description: item.description || '',
-      price: item.price ?? '',
-      date: toDateTimeLocal(item.date),
-      zipCode: item.zipCode || '',
-    })
-    setPage('events')
-  }
-
-  const cancelEdit = () => {
-    setEditingId(null)
-    setEvent(emptyEvent)
-  }
-
-  const deleteEvent = async (item) => {
-    if (!session) {
-      setShowAuth(true)
-      return
-    }
-
-    if (!window.confirm(`Delete "${item.title}"? This cannot be undone.`)) {
-      return
-    }
-
-    try {
-      await request(deleteEventMutation, { eventId: item._id })
-
-      if (editingId === item._id) {
-        cancelEdit()
-      }
-
-      flash('Event deleted.')
-      await loadEvents()
-      await loadBookings()
-    } catch (err) {
-      fail(err.message)
-    }
-  }
-
-  const cancelBooking = async (booking) => {
-    if (!session) {
-      setShowAuth(true)
-      return
-    }
-
-    if (!window.confirm(`Cancel your booking for "${booking.event.title}"?`)) {
-      return
-    }
-
-    try {
-      await request(cancelBookingMutation, {
-        bookingId: booking._id,
+      await request(createEventMutation, {
+        eventInput: {
+          ...event,
+          price: Number(event.price),
+        },
       })
-      flash('Booking cancelled.')
-      await loadBookings()
+
+      setEvent(emptyEvent)
+      flash('Event published.')
       await loadEvents()
     } catch (err) {
       fail(err.message)
@@ -1184,20 +731,10 @@ function App() {
   }
 
   const getRideQuote = async (e) => {
-    if (e && e.preventDefault) e.preventDefault()
+    e.preventDefault()
 
     if (!session) {
       setShowAuth(true)
-      return
-    }
-
-    if (
-      ride.pickupLat == null ||
-      ride.pickupLng == null ||
-      ride.destLat == null ||
-      ride.destLng == null
-    ) {
-      fail('Tap the map to set pickup and destination.')
       return
     }
 
@@ -1207,61 +744,28 @@ function App() {
     try {
       const input = {
         pickup: {
-          address: ride.pickup || 'Pickup',
-          lat: Number(ride.pickupLat),
-          lng: Number(ride.pickupLng),
+          address: ride.pickup,
+          lat: 0,
+          lng: 0,
         },
         destination: {
-          address: ride.destination || 'Destination',
-          lat: Number(ride.destLat),
-          lng: Number(ride.destLng),
+          address: ride.destination,
+          lat: 0,
+          lng: 0,
         },
-        surgeMultiplier: 1,
+        distanceMiles: Number(ride.distanceMiles),
+        durationMinutes: Number(ride.durationMinutes),
+        surgeMultiplier: Number(ride.surgeMultiplier || 1),
       }
 
       const data = await request(quoteRideMutation, { input })
 
-      setRide((current) => ({
-        ...current,
-        distanceMiles: data.quoteRide.distanceMiles,
-        durationMinutes: data.quoteRide.durationMinutes,
-      }))
       setRideQuote(data.quoteRide)
       flash('Fare quote calculated.')
     } catch (err) {
       fail(err.message)
     } finally {
       setRideLoading(false)
-    }
-  }
-
-  const pickMapPoint = async (role, point) => {
-    try {
-      const data = await request(reverseGeocodeQuery, {
-        lat: point.lat,
-        lng: point.lng,
-      })
-      const place = data.reverseGeocode
-      const label = place?.address || `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`
-
-      if (role === 'pickup') {
-        setRide((current) => ({
-          ...current,
-          pickup: label,
-          pickupLat: point.lat,
-          pickupLng: point.lng,
-        }))
-      } else {
-        setRide((current) => ({
-          ...current,
-          destination: label,
-          destLat: point.lat,
-          destLng: point.lng,
-        }))
-      }
-      setRideQuote(null)
-    } catch (err) {
-      fail(err.message)
     }
   }
 
@@ -1290,15 +794,9 @@ function App() {
       })
 
       setDriver(data.setDriverOnline)
-      await loadDriverPanel()
-
-      if (data.setDriverOnline.online && 'Notification' in window) {
-        Notification.requestPermission()
-      }
-
       flash(
         data.setDriverOnline.online
-          ? 'You are now online. Incoming ride requests will appear below.'
+          ? 'You are now online.'
           : 'You are now offline.'
       )
     } catch (err) {
@@ -1316,7 +814,6 @@ function App() {
       fail(err.message)
     }
   }
-
 
   const nav = [
     ['dashboard', 'Dashboard'],
@@ -1344,11 +841,7 @@ function App() {
             <button
               key={key}
               className={page === key ? 'active' : ''}
-              onClick={() => {
-                setPage(key)
-                if (key === 'driver' || key === 'driver-dashboard') loadDriverPanel()
-                if (key === 'admin') loadAdminDrivers()
-              }}
+              onClick={() => setPage(key)}
             >
               {label}
             </button>
@@ -1359,20 +852,14 @@ function App() {
           {session ? (
             <>
               <span className="user-email">{session.email}</span>
-              <button
-                type="button"
-                className="outline-button"
-                onClick={logout}
-              >
+              <button className="outline-button" onClick={logout}>
                 Logout
               </button>
             </>
           ) : (
             <button
-              type="button"
               className="primary-button"
-              aria-label="Open login"
-              onPointerUp={openAuthLogin}
+              onClick={() => setShowAuth(true)}
             >
               Login
             </button>
@@ -1382,104 +869,6 @@ function App() {
 
       <main>
         {notice && <div className="toast success">{notice}</div>}
-        {session?.email?.toLowerCase() === 'echolsbrysonkyle@gmail.com' && (
-          <section className="admin-panel page">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">ADMIN</span>
-                <h2>Driver & Vehicle Approvals</h2>
-              </div>
-              <button
-                className="outline-button"
-                onClick={loadAdminDrivers}
-                disabled={adminLoading}
-              >
-                {adminLoading ? 'Loading...' : 'Refresh'}
-              </button>
-            </div>
-
-            <p>
-              Administrator: echolsbrysonkyle@gmail.com
-            </p>
-
-            <div className="admin-driver-list">
-              {adminDrivers.length === 0 ? (
-                <div className="card">
-                  <strong>No driver applications loaded.</strong>
-                  <button
-                    className="primary-button"
-                    onClick={loadAdminDrivers}
-                  >
-                    Load applications
-                  </button>
-                </div>
-              ) : (
-                adminDrivers.map(d => (
-                  <div className="card" key={d._id}>
-                    <h3>
-                      {d.firstName} {d.lastName}
-                    </h3>
-
-                    <p>
-                      {d.vehicleYear} {d.vehicleMake} {d.vehicleModel}
-                    </p>
-
-                    <p>
-                      {d.vehicleColor} • {d.licensePlate}
-                    </p>
-
-                    <p>
-                      Driver status: <strong>{d.status}</strong>
-                    </p>
-
-                    <p>
-                      Vehicle status: <strong>{d.vehicleStatus}</strong>
-                    </p>
-
-                    <div className="hero-actions">
-                      {d.status !== 'APPROVED' && (
-                        <button
-                          className="primary-button"
-                          onClick={() => approveDriver(d._id)}
-                        >
-                          Approve driver
-                        </button>
-                      )}
-
-                      {d.status !== 'DENIED' && (
-                        <button
-                          className="outline-button"
-                          onClick={() => denyDriver(d._id)}
-                        >
-                          Deny driver
-                        </button>
-                      )}
-
-                      {d.vehicleStatus !== 'APPROVED' && (
-                        <button
-                          className="primary-button"
-                          onClick={() => approveVehicle(d._id)}
-                        >
-                          Approve vehicle
-                        </button>
-                      )}
-
-                      {d.vehicleStatus !== 'DENIED' && (
-                        <button
-                          className="outline-button"
-                          onClick={() => denyVehicle(d._id)}
-                        >
-                          Deny vehicle
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        )}
-
         {error && <div className="toast error">{error}</div>}
 
         {page === 'dashboard' && (
@@ -1597,37 +986,17 @@ function App() {
                         : item.creator?.email}
                     </small>
 
-                    <div className="event-footer card-bottom">
+                    <div className="event-footer">
                       <strong>
                         ${Number(item.price).toFixed(2)}
                       </strong>
 
-                      <span className="card-actions">
-                        {isEventOwner(item, session) && (
-                          <>
-                            <button
-                              type="button"
-                              className="text-button"
-                              onClick={() => startEdit(item)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => deleteEvent(item)}
-                            >
-                              Delete
-                            </button>
-                          </>
-                        )}
-                        <button
-                          className="primary-button"
-                          onClick={() => bookEvent(item._id)}
-                        >
-                          Book now
-                        </button>
-                      </span>
+                      <button
+                        className="primary-button"
+                        onClick={() => bookEvent(item._id)}
+                      >
+                        Book now
+                      </button>
                     </div>
                   </div>
                 </article>
@@ -1644,9 +1013,7 @@ function App() {
             {session && (
               <div className="form-card">
                 <span className="eyebrow">HOST</span>
-                <h3>
-                  {editingId ? 'Edit your event' : 'Publish an event'}
-                </h3>
+                <h3>Publish an event</h3>
 
                 <form onSubmit={publishEvent}>
                   <input
@@ -1718,17 +1085,8 @@ function App() {
                   </div>
 
                   <button className="primary-button">
-                    {editingId ? 'Save changes' : 'Publish event'}
+                    Publish event
                   </button>
-                  {editingId && (
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={cancelEdit}
-                    >
-                      Cancel edit
-                    </button>
-                  )}
                 </form>
               </div>
             )}
@@ -1748,35 +1106,88 @@ function App() {
             <div className="ride-layout">
               <form className="form-card" onSubmit={getRideQuote}>
                 <h3>Trip details</h3>
-                <p>
-                  Choose pickup and destination by tapping the map.
-                  Typed addresses are not accepted.
-                </p>
 
-                <RideMapPicker
-                  pickup={
-                    ride.pickupLat == null
-                      ? null
-                      : { lat: ride.pickupLat, lng: ride.pickupLng }
+                <label>Pickup</label>
+                <input
+                  placeholder="Pickup address"
+                  value={ride.pickup}
+                  onChange={e =>
+                    setRide({
+                      ...ride,
+                      pickup: e.target.value,
+                    })
                   }
-                  destination={
-                    ride.destLat == null
-                      ? null
-                      : { lat: ride.destLat, lng: ride.destLng }
+                  required
+                />
+
+                <label>Destination</label>
+                <input
+                  placeholder="Destination address"
+                  value={ride.destination}
+                  onChange={e =>
+                    setRide({
+                      ...ride,
+                      destination: e.target.value,
+                    })
                   }
-                  pickupLabel={ride.pickup}
-                  destinationLabel={ride.destination}
-                  onPickPickup={(point) => pickMapPoint('pickup', point)}
-                  onPickDestination={(point) => pickMapPoint('destination', point)}
+                  required
+                />
+
+                <div className="form-grid">
+                  <div>
+                    <label>Distance</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="Miles"
+                      value={ride.distanceMiles}
+                      onChange={e =>
+                        setRide({
+                          ...ride,
+                          distanceMiles: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label>Duration</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Minutes"
+                      value={ride.durationMinutes}
+                      onChange={e =>
+                        setRide({
+                          ...ride,
+                          durationMinutes: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+
+                <label>Surge multiplier</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="0.1"
+                  value={ride.surgeMultiplier}
+                  onChange={e =>
+                    setRide({
+                      ...ride,
+                      surgeMultiplier: e.target.value,
+                    })
+                  }
                 />
 
                 <button
                   className="primary-button large"
-                  disabled={
-                    rideLoading ||
-                    ride.pickupLat == null ||
-                    ride.destLat == null
-                  }
+                  disabled={rideLoading}
                 >
                   {rideLoading
                     ? 'Calculating...'
@@ -1792,36 +1203,32 @@ function App() {
                     <div className="payment-card">
                       <label>Payment card</label>
                       <div className="stripe-card">
-                        {stripe && elements ? (
-                          <CardElement
-                            options={{
-                              hidePostalCode: false,
-                              style: {
-                                base: {
-                                  fontSize: '16px',
-                                  color: '#1f2937',
-                                  fontFamily: 'Arial, sans-serif',
-                                  '::placeholder': {
-                                    color: '#6b7280',
-                                  },
-                                },
-                                invalid: {
-                                  color: '#dc2626',
+                        <CardElement
+                          options={{
+                            hidePostalCode: false,
+                            style: {
+                              base: {
+                                fontSize: '16px',
+                                color: '#1f2937',
+                                fontFamily: 'Arial, sans-serif',
+                                '::placeholder': {
+                                  color: '#6b7280',
                                 },
                               },
-                            }}
-                            onChange={event => {
-                              setCardComplete(event.complete)
-                              if (event.error) {
-                                setError(event.error.message)
-                              } else {
-                                setError('')
-                              }
-                            }}
-                          />
-                        ) : (
-                          <p>Loading payment form...</p>
-                        )}
+                              invalid: {
+                                color: '#dc2626',
+                              },
+                            },
+                          }}
+                          onChange={event => {
+                            setCardComplete(event.complete)
+                            if (event.error) {
+                              setError(event.error.message)
+                            } else {
+                              setError('')
+                            }
+                          }}
+                        />
                       </div>
                     </div>
 
@@ -1870,8 +1277,7 @@ function App() {
                     <div className="quote-icon">↗</div>
                     <h3>Your fare appears here</h3>
                     <p>
-                      Tap pickup and destination on the map, then calculate fare.
-                      Your card is charged only after the trip is complete.
+                      Enter your trip details and calculate an estimate.
                     </p>
                   </div>
                 )}
@@ -1943,7 +1349,7 @@ function App() {
                 <div className="driver-stats">
                   <div>
                     <strong>
-                      {Number(driver.rating || 0).toFixed(1)}
+                      {Number(driver.rating).toFixed(1)}
                     </strong>
                     <span>Rating</span>
                   </div>
@@ -1955,106 +1361,11 @@ function App() {
 
                   <div>
                     <strong>
-                      ${Number(driver.totalEarnings || 0).toFixed(2)}
+                      ${Number(driver.totalEarnings).toFixed(2)}
                     </strong>
                     <span>Total earnings</span>
                   </div>
                 </div>
-
-                {driver.status === 'APPROVED' && driver.online && (
-                  <div className="form-card">
-                    <span className="eyebrow">INCOMING REQUESTS</span>
-                    <h3>Ride requests</h3>
-                    <p>Accept or deny trips while you are online. New requests refresh automatically.</p>
-                    {driverLoadingPanel ? (
-                      <p>Checking for rides...</p>
-                    ) : availableRides.length ? (
-                      availableRides.map((item) => (
-                        <article className="booking-row" key={item._id}>
-                          <div>
-                            <span>PICKUP</span>
-                            <strong>{item.pickup}</strong>
-                          </div>
-                          <div>
-                            <span>DESTINATION</span>
-                            <strong>{item.destination}</strong>
-                          </div>
-                          <div>
-                            <span>FARE</span>
-                            <strong>
-                              ${Number(item.fare || item.estimatedFare || 0).toFixed(2)}
-                            </strong>
-                          </div>
-                          <div className="row-action">
-                            <button
-                              type="button"
-                              className="primary-button"
-                              onClick={() => acceptRide(item._id)}
-                            >
-                              Accept
-                            </button>
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => rejectRide(item._id)}
-                            >
-                              Deny
-                            </button>
-                          </div>
-                        </article>
-                      ))
-                    ) : (
-                      <p>No open ride requests right now.</p>
-                    )}
-                  </div>
-                )}
-
-                {driver.status === 'APPROVED' && (
-                  <div className="form-card">
-                    <span className="eyebrow">YOUR RIDES</span>
-                    <h3>Assigned trips</h3>
-                    {myRides.length ? (
-                      myRides.map((item) => (
-                        <article className="booking-row" key={item._id}>
-                          <div>
-                            <span>STATUS</span>
-                            <strong>{item.status}</strong>
-                          </div>
-                          <div>
-                            <span>PICKUP</span>
-                            <strong>{item.pickup}</strong>
-                          </div>
-                          <div>
-                            <span>DESTINATION</span>
-                            <strong>{item.destination}</strong>
-                          </div>
-                          <div className="row-action">
-                            {item.status === 'ACCEPTED' && (
-                              <button
-                                type="button"
-                                className="primary-button"
-                                onClick={() => startAssignedRide(item._id)}
-                              >
-                                Start trip
-                              </button>
-                            )}
-                            {item.status === 'IN_PROGRESS' && (
-                              <button
-                                type="button"
-                                className="primary-button"
-                                onClick={() => completeAssignedRide(item._id)}
-                              >
-                                Complete trip
-                              </button>
-                            )}
-                          </div>
-                        </article>
-                      ))
-                    ) : (
-                      <p>No assigned trips yet.</p>
-                    )}
-                  </div>
-                )}
 
                 <div className="form-card">
                   <span className="eyebrow">VEHICLE</span>
@@ -2223,16 +1534,6 @@ function App() {
                         ).toFixed(2)}
                       </strong>
                     </div>
-
-                    <div className="row-action">
-                      <button
-                        type="button"
-                        className="danger"
-                        onClick={() => cancelBooking(booking)}
-                      >
-                        Cancel booking
-                      </button>
-                    </div>
                   </article>
                 ))}
               </div>
@@ -2343,7 +1644,10 @@ function App() {
         )}
       </main>
 
-      <footer><span>LINK</span></footer>
+      <footer>
+        <span>LINK</span>
+        <span>Events • Rides • Social</span>
+      </footer>
 
       {showAuth && (
         <div
@@ -2412,14 +1716,8 @@ function App() {
                 />
 
                 <button
-                  type="button"
                   className="primary-button large"
                   disabled={loading}
-                  onClick={(e) => login(e)}
-                  onTouchEnd={(e) => {
-                    e.preventDefault()
-                    if (!loading) login(e)
-                  }}
                 >
                   {loading ? 'Logging in...' : 'Login'}
                 </button>
@@ -2521,13 +1819,9 @@ function App() {
   )
 }
 
-const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-
-if (!stripeKey || !stripeKey.startsWith('pk_')) {
-  console.error('Stripe publishable key is missing or invalid')
-}
-
-const stripePromise = stripeKey ? loadStripe(stripeKey) : null
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ''
+)
 
 const StripeApp = () => (
   <Elements stripe={stripePromise}>

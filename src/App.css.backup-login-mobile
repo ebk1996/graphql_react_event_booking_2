@@ -508,8 +508,7 @@ section#events,
   line-height: 1.55;
 }
 
-.card-bottom,
-.event-footer {
+.card-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -591,7 +590,7 @@ section#events,
 
 .booking-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr auto auto;
+  grid-template-columns: 1.3fr 1fr auto;
 
   gap: 20px;
 
@@ -1891,116 +1890,11 @@ footer .brand,
 }
 
 
-.ride-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.ride-map-wrap {
-  display: grid;
-  gap: 12px;
-  margin: 12px 0 20px;
-}
-
-.ride-map-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ride-map-hint,
-.ride-map-labels span {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.ride-map {
-  height: 340px;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.ride-map-labels {
-  display: grid;
-  gap: 10px;
-}
-
-.ride-map-labels div {
-  display: grid;
-  gap: 4px;
-}
-
-.ride-map-labels strong {
-  font-size: 0.92rem;
-  line-height: 1.4;
-}
-
-@media (max-width: 900px) {
-  .ride-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.quote-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 24px;
-  min-height: 320px;
-}
-
-.quote-card .fare {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 12px 0 20px;
-}
-
-.quote-stat {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.quote-empty {
-  text-align: center;
-  padding: 40px 12px;
-  color: #6b7280;
-}
-
-.quote-card .primary-button {
-  width: 100%;
-  margin-top: 16px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--green);
-  color: white;
-  padding: 13px;
-  font-weight: 800;
-}
-
-.page.reveal.is-visible,
-.page:has(.stripe-card) {
-  opacity: 1;
-  transform: none;
-  filter: none;
-  animation: none;
-}
-
 .payment-card {
-  display: block;
-  position: relative;
-  width: 100%;
-  margin: 0 0 20px;
-  overflow: visible;
+  margin: 24px 0;
 }
 
-.payment-card > label {
+.payment-card label {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
@@ -2008,40 +1902,313 @@ footer .brand,
 
 .stripe-card {
   display: block;
-  position: relative;
   width: 100%;
-  min-height: 56px;
-  box-sizing: border-box;
-  padding: 16px 14px;
-  background: #ffffff;
+  min-height: 44px;
+  padding: 12px 14px;
+  background: #fff;
   border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  overflow: visible;
-  pointer-events: auto;
-  cursor: text;
-}
-
-.stripe-card iframe {
-  display: block;
-  width: 100%;
-  min-height: 32px;
-  border: 0;
-  pointer-events: auto;
-}
-
-@media (max-width: 900px) {
-  .stripe-card {
-    min-height: 72px;
-  }
-
-  .stripe-card iframe {
-    min-height: 40px;
-  }
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 
 .stripe-card:focus-within {
   border-color: #635bff;
   box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+}
+
+.stripe-card {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 55px !important;
+  min-height: 55px !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  background: #ffffff !important;
+  border: 2px solid #635bff !important;
+  border-radius: 8px !important;
+  overflow: visible !important;
+}
+
+.stripe-card iframe {
+  display: block !important;
+  width: 100% !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.payment-card {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 999 !important;
+}
+
+.stripe-card,
+.stripe-card iframe {
+  pointer-events: auto !important;
+  user-select: auto !important;
+}
+
+.stripe-card {
+  position: relative !important;
+  z-index: 9999 !important;
+  isolation: isolate !important;
+  cursor: text !important;
+}
+
+.stripe-card iframe {
+  position: relative !important;
+  z-index: 10000 !important;
+  pointer-events: auto !important;
+}
+
+
+/* Stripe CardElement — force interactive input */
+.payment-card,
+.stripe-card {
+  position: relative !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+}
+
+.stripe-card {
+  min-height: 58px !important;
+  width: 100% !important;
+  display: block !important;
+  background: #fff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  cursor: text !important;
+}
+
+.stripe-card iframe {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 1001 !important;
+  width: 100% !important;
+  min-height: 28px !important;
+}
+
+.stripe-card:focus-within {
+  border-color: #635bff !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,.15) !important;
+}
+
+/* ===== HARD FIX: STRIPE IFRAME INTERACTION ===== */
+
+.quote-card:has(.stripe-card-input),
+.payment-card:has(.stripe-card-input),
+.page:has(.stripe-card-input),
+.page.reveal:has(.stripe-card-input) {
+  transform: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+}
+
+
+
+
+.stripe-card-input {
+  all: initial !important;
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 64px !important;
+  min-height: 64px !important;
+  box-sizing: border-box !important;
+  padding: 18px 14px !important;
+  margin: 0 !important;
+  background: #fff !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  pointer-events: auto !important;
+  cursor: text !important;
+  z-index: 2147483647 !important;
+  isolation: isolate !important;
+}
+
+.stripe-card-input iframe {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  pointer-events: auto !important;
+  z-index: 2147483647 !important;
+}
+
+.stripe-card-input iframe:hover,
+.stripe-card-input iframe:focus {
+  pointer-events: auto !important;
+}
+
+.stripe-card-input:focus-within {
+  border-color: #635bff !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,.18) !important;
+}
+
+/* Kill common decorative/overlay layers around Stripe */
+
+
+.stripe-card-input {
+  position: relative !important;
+  isolation: isolate !important;
+  contain: none !important;
+  overflow: visible !important;
+  transform: translateZ(0) !important;
+}
+
+.stripe-card-input iframe {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  pointer-events: auto !important;
+  touch-action: auto !important;
+  z-index: 2147483647 !important;
+}
+
+.stripe-card-input {
+  min-height: 64px !important;
+  height: 64px !important;
+}
+
+
+/* ============================================================
+   STRIPE: ABSOLUTE INTERACTION ISOLATION
+   ============================================================ */
+
+/* Every ancestor containing Stripe must permit interaction */
+.page:has(.stripe-card),
+.page:has(.stripe-card-input),
+.page:has(.stripe-payment-container),
+.quote-card:has(.stripe-card),
+.quote-card:has(.stripe-card-input),
+.quote-card:has(.stripe-payment-container),
+.payment-card:has(.stripe-card),
+.payment-card:has(.stripe-card-input),
+.payment-card:has(.stripe-payment-container) {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+  overflow: visible !important;
+}
+
+/* Kill decorative layers that can sit over the iframe */
+.page:has(.stripe-card)::before,
+.page:has(.stripe-card)::after,
+.page:has(.stripe-card-input)::before,
+.page:has(.stripe-card-input)::after,
+.quote-card:has(.stripe-card)::before,
+.quote-card:has(.stripe-card)::after,
+
+
+/* =========================================================
+   STRIPE PAYMENT CARD — CLEAN IMPLEMENTATION
+   ========================================================= */
+
+.payment-card {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  margin: 0 0 20px 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  z-index: 20 !important;
+}
+
+.payment-card > label {
+  display: block !important;
+  position: static !important;
+  margin-bottom: 8px !important;
+  pointer-events: none !important;
+}
+
+.stripe-card,
+.stripe-card-input {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  box-sizing: border-box !important;
+  padding: 16px !important;
+  margin: 0 !important;
+
+  background: #ffffff !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  pointer-events: auto !important;
+  z-index: 1000 !important;
+}
+
+.stripe-card iframe,
+.stripe-card-input iframe {
+  display: block !important;
+  position: relative !important;
+
+  width: 100% !important;
+  height: 24px !important;
+  min-height: 24px !important;
+
+  border: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  z-index: 1001 !important;
+}
+
+.stripe-card::before,
+.stripe-card::after,
+.stripe-card-input::before,
+.stripe-card-input::after {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.stripe-card *,
+.stripe-card-input * {
+  pointer-events: auto !important;
+}
+
+.stripe-card:focus-within,
+.stripe-card-input:focus-within {
+  border-color: #635bff !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,.15) !important;
 }
 
 /* ---------- Auth modal fix ---------- */
@@ -2123,226 +2290,3 @@ footer .brand,
   cursor: not-allowed !important;
 }
 
-
-/* =========================================================
-   MOBILE LOGIN PATCH
-   Ensure authentication modal and controls remain clickable
-   ========================================================= */
-
-.modal-backdrop {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 99999 !important;
-  pointer-events: auto !important;
-  touch-action: auto !important;
-}
-
-.auth-modal {
-  position: relative !important;
-  z-index: 100000 !important;
-  width: min(420px, calc(100vw - 32px)) !important;
-  max-height: calc(100dvh - 32px) !important;
-  overflow-y: auto !important;
-  pointer-events: auto !important;
-  touch-action: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-
-.auth-modal form {
-  position: relative !important;
-  z-index: 100001 !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-}
-
-.auth-modal input {
-  position: relative !important;
-  z-index: 100002 !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-}
-
-.auth-modal button {
-  position: relative !important;
-  z-index: 100003 !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-  -webkit-tap-highlight-color: transparent !important;
-}
-
-.auth-modal .primary-button {
-  min-height: 48px !important;
-  width: 100% !important;
-  cursor: pointer !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-}
-
-.auth-modal .primary-button:disabled {
-  pointer-events: none !important;
-}
-
-.modal-close {
-  z-index: 100004 !important;
-  pointer-events: auto !important;
-}
-
-@media (max-width: 650px) {
-  .modal-backdrop {
-    padding: 16px !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .auth-modal {
-    width: 100% !important;
-    max-width: 420px !important;
-    max-height: calc(100dvh - 32px) !important;
-    overflow-y: auto !important;
-  }
-
-  .auth-modal form {
-    padding-bottom: 8px !important;
-  }
-
-  .auth-modal .primary-button.large {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    min-height: 52px !important;
-    width: 100% !important;
-    margin-top: 16px !important;
-  }
-}
-
-@media (hover: none) and (pointer: coarse) {
-  .auth-modal,
-  .auth-modal form,
-  .auth-modal input,
-  .auth-modal button {
-    pointer-events: auto !important;
-  }
-
-  .auth-modal button:not(:disabled) {
-    cursor: pointer !important;
-  }
-}
-
-/* =========================================================
-   TOP-RIGHT LOGIN MOBILE CLICK FIX
-   ========================================================= */
-
-.top-login-area {
-  position: relative !important;
-  z-index: 1000000 !important;
-  pointer-events: auto !important;
-}
-
-.top-login-button {
-  position: relative !important;
-  z-index: 1000001 !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-  -webkit-tap-highlight-color: transparent !important;
-  cursor: pointer !important;
-}
-
-.topbar,
-.topbar nav,
-.topbar .account-actions {
-  pointer-events: auto !important;
-}
-
-@media (max-width: 650px) {
-  .topbar {
-    position: relative !important;
-    z-index: 1000000 !important;
-    pointer-events: auto !important;
-  }
-
-  .top-login-area {
-    position: relative !important;
-    z-index: 1000002 !important;
-    pointer-events: auto !important;
-  }
-
-  .top-login-button {
-    position: relative !important;
-    z-index: 1000003 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    min-height: 44px !important;
-    min-width: 82px !important;
-    pointer-events: auto !important;
-    touch-action: manipulation !important;
-  }
-}
-
-/* FINAL TOP LOGIN POINTER PATCH */
-.topbar .top-login-area {
-  isolation: isolate !important;
-}
-
-.topbar .top-login-button {
-  position: relative !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  z-index: 2147483647 !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-  user-select: none !important;
-  -webkit-user-select: none !important;
-  -webkit-touch-callout: none !important;
-}
-
-@media (max-width: 650px) {
-  .topbar .top-login-area {
-    isolation: isolate !important;
-    z-index: 2147483647 !important;
-  }
-
-  .topbar .top-login-button {
-    min-width: 90px !important;
-    min-height: 48px !important;
-    z-index: 2147483647 !important;
-    pointer-events: auto !important;
-    touch-action: manipulation !important;
-  }
-}
-
-
-/* FINAL AUTH HEADER FIX */
-.topbar .account-actions {
-  position: relative !important;
-  z-index: 2147483647 !important;
-  pointer-events: auto !important;
-}
-
-.topbar .account-actions > button {
-  position: relative !important;
-  z-index: 2147483647 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  pointer-events: auto !important;
-  touch-action: manipulation !important;
-  cursor: pointer !important;
-  min-height: 44px !important;
-}
-
-@media (max-width: 650px) {
-  .topbar .account-actions {
-    position: relative !important;
-    z-index: 2147483647 !important;
-    pointer-events: auto !important;
-  }
-
-  .topbar .account-actions > button {
-    min-width: 88px !important;
-    min-height: 48px !important;
-    pointer-events: auto !important;
-    touch-action: manipulation !important;
-  }
-}

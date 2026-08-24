@@ -3,8 +3,6 @@ const jwt = require('jsonwebtoken');
 const Event = require('../../models/event');
 const User = require('../../models/user');
 const Booking = require('../../models/booking');
-const Driver = require('../../models/driver');
-const Ride = require('../../models/ride');
 const Notification = require('../../models/notification');
 const { isValidObjectId, ensureValidObjectId, ensureOwner } = require('./helpers');
 const { createTransformEvent } = require('./transform');
@@ -13,23 +11,17 @@ const social = require('./social');
 const { Comment, Message } = require('../models/Social');
 const AppNotification = require('../models/AppNotification');
 const { calculateFare } = require('../services/fare');
-const {
-    routeBetween,
-    reverseGeocode,
-    resolveLocation,
-    isValidCoord,
-} = require('../services/routing');
+const Driver = require('../models/Driver');
+const Ride = require('../models/Ride');
 const Card = require('../models/Card');
 const Payment = require('../models/Payment');
 const {
     stripePublishableKey,
     createAndConfirmPaymentIntent,
-    chargeRideOnComplete,
     retrievePaymentIntent,
     capturePaymentIntent,
     assertIntentUsable,
     mapPaymentStatus,
-    attachPaymentMethod,
 } = require('../services/stripe');
 
 // transformEvent created after user resolver is defined; placeholder will be reassigned
@@ -113,125 +105,6 @@ const transformBooking = (booking) => ({
     createdAt: new Date(booking._doc.createdAt).toISOString(),
     updatedAt: new Date(booking._doc.updatedAt).toISOString(),
 });
-
-
-// ============================================================
-// ADMIN / DRIVER AUTHORIZATION
-// ============================================================
-
-const ADMIN_EMAIL = 'echolsbrysonkyle@gmail.com';
-
-const isAdminUser = (u) =>
-    !!u &&
-    String(u.email || '').trim().toLowerCase() === ADMIN_EMAIL;
-
-const requireAdmin = async (context) => {
-    const u = await requireAuth(context, 'Administrator login required.');
-    if (!isAdminUser(u)) {
-        throw new Error('Administrator access denied.');
-    }
-
-    if (u.role !== 'admin') {
-        u.role = 'admin';
-        await u.save();
-    }
-
-    return u;
-};
-
-const getApprovedDriver = async (context) => {
-    const u = await requireAuth(context, 'Please log in as a driver.');
-
-    const d = await Driver.findOne({ user: u._id });
-
-    if (!d) {
-        throw new Error('Driver profile not found.');
-    }
-
-    if (d.status !== 'APPROVED') {
-        throw new Error('Only approved drivers can perform this action.');
-    }
-
-    if (d.vehicleStatus !== 'APPROVED') {
-        throw new Error('Vehicle has not been approved.');
-    }
-
-    return d;
-};
-
-const transformDriver = async (d) => {
-    if (!d) return null;
-
-    let u = null;
-
-    if (d.user) {
-        u = await User.findById(d.user);
-    }
-
-    return {
-        ...d._doc,
-        _id: d.id,
-        user: u
-            ? {
-                ...u._doc,
-                _id: u.id,
-                password: undefined,
-            }
-            : null,
-        createdAt: d.createdAt
-            ? new Date(d.createdAt).toISOString()
-            : null,
-        updatedAt: d.updatedAt
-            ? new Date(d.updatedAt).toISOString()
-            : null,
-    };
-};
-
-const transformRide = async (r) => {
-    if (!r) return null;
-
-    const rider = r.rider
-        ? await User.findById(r.rider)
-        : null;
-
-    const driver = r.driver
-        ? await Driver.findById(r.driver)
-        : null;
-
-    const pickupAddress =
-        r.pickup && typeof r.pickup === 'object'
-            ? r.pickup.address || ''
-            : r.pickup;
-
-    const destinationAddress =
-        r.destination && typeof r.destination === 'object'
-            ? r.destination.address || ''
-            : r.destination;
-
-    return {
-        ...r._doc,
-        _id: r.id,
-        pickup: pickupAddress,
-        destination: destinationAddress,
-        fare: r.fare ?? r.estimatedFare ?? 0,
-        estimatedFare: r.estimatedFare ?? r.fare ?? 0,
-        rider: rider
-            ? {
-                ...rider._doc,
-                _id: rider.id,
-                password: undefined,
-            }
-            : null,
-        driver: driver ? await transformDriver(driver) : null,
-        createdAt: r.createdAt
-            ? new Date(r.createdAt).toISOString()
-            : null,
-        updatedAt: r.updatedAt
-            ? new Date(r.updatedAt).toISOString()
-            : null,
-    };
-};
-
 
 module.exports = {
     stripeConfig: async () => ({
@@ -655,85 +528,50 @@ module.exports = {
             throw new Error('Invalid surge multiplier.');
         }
 
-        const paymentMethodId = String(args.paymentMethodId || '').trim();
-        const paymentIntentId = String(args.paymentIntentId || '').trim();
-
-        if (!paymentMethodId && !paymentIntentId) {
-            throw new Error('A saved payment card is required.');
-        }
-
-        let pickupLat = Number(args.pickup && args.pickup.lat);
-        let pickupLng = Number(args.pickup && args.pickup.lng);
-        let destLat = Number(args.destination && args.destination.lat);
-        let destLng = Number(args.destination && args.destination.lng);
-
-        let pickupAddress = String((args.pickup && args.pickup.address) || '').trim();
-        let destinationAddress = String(
-            (args.destination && args.destination.address) || ''
-        ).trim();
-
-        if (
-            isValidCoord(pickupLat, pickupLng) &&
-            isValidCoord(destLat, destLng)
-        ) {
-            const [pickupResolved, destResolved, route] = await Promise.all([
-                resolveLocation(args.pickup),
-                resolveLocation(args.destination),
-                routeBetween(args.pickup, args.destination),
-            ]);
-            pickupAddress = pickupResolved.address;
-            destinationAddress = destResolved.address;
-            pickupLat = pickupResolved.lat;
-            pickupLng = pickupResolved.lng;
-            destLat = destResolved.lat;
-            destLng = destResolved.lng;
-            args.distanceMiles = route.distanceMiles;
-            args.durationMinutes = route.durationMinutes;
-        }
-
-        if (!pickupAddress || !destinationAddress) {
-            throw new Error('Pickup and destination must be selected on the map.');
+        if (!args.paymentIntentId) {
+            throw new Error('A Stripe payment authorization is required.');
         }
 
         const fare = calculateFare({
-            distanceMiles: Number(args.distanceMiles),
-            durationMinutes: Number(args.durationMinutes),
+            distanceMiles,
+            durationMinutes,
             surgeMultiplier,
         });
 
-        let paymentStatus = 'PENDING';
-        let stripePaymentStatus = '';
-        let storedPaymentIntentId = '';
+        const paymentIntent = await retrievePaymentIntent(
+            args.paymentIntentId
+        );
 
-        if (paymentMethodId) {
-            await attachPaymentMethod(currentUser, paymentMethodId);
-        } else if (paymentIntentId) {
-            const paymentIntent = await retrievePaymentIntent(paymentIntentId);
-            assertIntentUsable(
-                paymentIntent,
-                currentUser,
-                fare.estimatedFare
-            );
-            paymentStatus = mapPaymentStatus(paymentIntent.status);
-            stripePaymentStatus = paymentIntent.status;
-            storedPaymentIntentId = paymentIntent.id;
-        }
+        assertIntentUsable(
+            paymentIntent,
+            currentUser,
+            fare.estimatedFare
+        );
+
+        const stripePaymentStatus = mapPaymentStatus(
+            paymentIntent.status
+        );
 
         const ride = new Ride({
             rider: currentUser._id,
             driver: null,
 
-            pickup: pickupAddress,
-            destination: destinationAddress,
-            pickupLat: Number.isFinite(pickupLat) ? pickupLat : null,
-            pickupLng: Number.isFinite(pickupLng) ? pickupLng : null,
-            destinationLat: Number.isFinite(destLat) ? destLat : null,
-            destinationLng: Number.isFinite(destLng) ? destLng : null,
+            pickup: {
+                address: String(args.pickup.address).trim(),
+                lat: Number(args.pickup.lat),
+                lng: Number(args.pickup.lng),
+            },
+
+            destination: {
+                address: String(args.destination.address).trim(),
+                lat: Number(args.destination.lat),
+                lng: Number(args.destination.lng),
+            },
 
             distanceMiles: fare.distanceMiles,
             durationMinutes: fare.durationMinutes,
 
-            fare: fare.estimatedFare,
+            baseFare: fare.baseFare,
             estimatedFare: fare.estimatedFare,
 
             driverAmount: fare.driverAmount,
@@ -742,11 +580,9 @@ module.exports = {
             surgeMultiplier: fare.surgeMultiplier,
 
             status: 'REQUESTED',
-            paymentStatus,
-            paymentIntentId: storedPaymentIntentId,
-            paymentMethodId,
-            stripePaymentStatus,
-            deniedBy: [],
+            paymentStatus: stripePaymentStatus,
+            paymentIntentId: paymentIntent.id,
+            stripePaymentStatus: paymentIntent.status,
         });
 
         const saved = await ride.save();
@@ -754,13 +590,13 @@ module.exports = {
         const payment = new Payment({
             ride: saved._id,
             rider: currentUser._id,
-            paymentIntentId: storedPaymentIntentId,
-            authorizationId: storedPaymentIntentId,
-            stripeStatus: stripePaymentStatus,
+            paymentIntentId: paymentIntent.id,
+            authorizationId: paymentIntent.id,
+            stripeStatus: paymentIntent.status,
             amount: fare.estimatedFare,
             driverAmount: fare.driverAmount,
             platformAmount: fare.platformAmount,
-            status: paymentStatus === 'AUTHORIZED' ? 'AUTHORIZED' : 'PENDING',
+            status: stripePaymentStatus,
             provider: 'stripe',
         });
 
@@ -895,11 +731,10 @@ module.exports = {
         }
 
         if (
-            ride.status !== 'ACCEPTED' &&
             ride.status !== 'DRIVER_ARRIVING' &&
             ride.status !== 'DRIVER_ARRIVED'
         ) {
-            throw new Error('Ride must be accepted before it can start.');
+            throw new Error('Driver must arrive before starting the ride.');
         }
 
         ride.status = 'IN_PROGRESS';
@@ -947,30 +782,27 @@ module.exports = {
             throw new Error('Ride must be in progress before completion.');
         }
 
+        if (!ride.paymentIntentId) {
+            throw new Error(
+                'This ride has no Stripe payment intent.'
+            );
+        }
+
+        /*
+         * Mark the ride completed first so captureRidePayment's
+         * completion requirement is satisfied.
+         */
+        ride.status = 'COMPLETED';
         ride.finalFare = ride.estimatedFare;
 
-        const riderUser = await User.findById(ride.rider);
-        if (!riderUser) {
-            throw new Error('Rider account was not found.');
-        }
-
-        let paymentIntent;
-
-        if (ride.paymentIntentId) {
-            paymentIntent = await capturePaymentIntent(ride.paymentIntentId);
-        } else if (ride.paymentMethodId) {
-            paymentIntent = await chargeRideOnComplete({
-                user: riderUser,
-                amount: ride.estimatedFare,
-                paymentMethodId: ride.paymentMethodId,
-                metadata: {
-                    rideId: String(ride._id),
-                },
-            });
-            ride.paymentIntentId = paymentIntent.id;
-        } else {
-            throw new Error('This ride has no saved payment card.');
-        }
+        /*
+         * IMPORTANT:
+         * Actually capture the Stripe authorization.
+         * Do NOT mark the ride CAPTURED until Stripe confirms it.
+         */
+        const paymentIntent = await capturePaymentIntent(
+            ride.paymentIntentId
+        );
 
         const paymentStatus = mapPaymentStatus(
             paymentIntent.status
@@ -982,7 +814,6 @@ module.exports = {
             );
         }
 
-        ride.status = 'COMPLETED';
         ride.paymentStatus = paymentStatus;
         ride.stripePaymentStatus = paymentIntent.status;
 
@@ -1195,45 +1026,16 @@ module.exports = {
         };
     },
 
-    reverseGeocode: async (args) => {
-        const result = await reverseGeocode(args.lat, args.lng);
-        if (!result) {
-            return {
-                address: `${Number(args.lat).toFixed(5)}, ${Number(args.lng).toFixed(5)}`,
-                lat: Number(args.lat),
-                lng: Number(args.lng),
-                zipCode: '',
-            };
-        }
-        return result;
-    },
-
     quoteRide: async (args) => {
         const {
-            pickup,
-            destination,
             distanceMiles,
             durationMinutes,
             surgeMultiplier = 1,
         } = args.input;
 
-        let miles = Number(distanceMiles);
-        let minutes = Number(durationMinutes);
-
-        if (
-            pickup &&
-            destination &&
-            isValidCoord(Number(pickup.lat), Number(pickup.lng)) &&
-            isValidCoord(Number(destination.lat), Number(destination.lng))
-        ) {
-            const route = await routeBetween(pickup, destination);
-            miles = route.distanceMiles;
-            minutes = route.durationMinutes;
-        }
-
         const fare = calculateFare({
-            distanceMiles: miles,
-            durationMinutes: minutes,
+            distanceMiles,
+            durationMinutes,
             surgeMultiplier,
         });
 
@@ -1478,14 +1280,6 @@ module.exports = {
             found.price = +args.eventInput.price;
             found.date = new Date(args.eventInput.date);
 
-            if (args.eventInput.zipCode !== undefined) {
-                const zipCode = String(args.eventInput.zipCode || '').trim();
-                if (!/^\d{5}$/.test(zipCode)) {
-                    throw new Error('ZIP code must be exactly 5 digits');
-                }
-                found.zipCode = zipCode;
-            }
-
             if (args.eventInput.imageUrl !== undefined) {
                 found.image = String(args.eventInput.imageUrl || '').trim();
             }
@@ -1574,25 +1368,8 @@ module.exports = {
             if (!foundUser || !(await bcrypt.compare(password, foundUser.password))) {
                 throw new Error('Incorrect email or password.');
             }
-            const normalizedEmail = String(foundUser.email || '').trim().toLowerCase();
-
-            // The single authoritative administrator account.
-            if (normalizedEmail === 'echolsbrysonkyle@gmail.com') {
-                if (foundUser.role !== 'admin') {
-                    foundUser.role = 'admin';
-                    await foundUser.save();
-                }
-            } else if (foundUser.role === 'admin') {
-                foundUser.role = 'user';
-                await foundUser.save();
-            }
-
             const token = jwt.sign(
-                {
-                    userId: foundUser.id,
-                    email: foundUser.email,
-                    role: foundUser.role,
-                },
+                { userId: foundUser.id, email: foundUser.email },
                 jwtSecret(),
                 { expiresIn: `${TOKEN_EXPIRATION_HOURS}h` },
             );
@@ -1675,199 +1452,6 @@ module.exports = {
             throw err;
         }
     },
-
-    me: async (_args, context) => {
-        return requireAuth(context);
-    },
-
-    myDriver: async (_args, context) => {
-        const u = await requireAuth(context);
-        const d = await Driver.findOne({ user: u._id });
-        return d ? transformDriver(d) : null;
-    },
-
-    adminDrivers: async (_args, context) => {
-        await requireAdmin(context);
-
-        const drivers = await Driver.find().sort({ createdAt: -1 });
-        return Promise.all(drivers.map(transformDriver));
-    },
-
-    availableRides: async (_args, context) => {
-        const driver = await getApprovedDriver(context);
-        if (!driver.online) return [];
-
-        const rides = await Ride.find({
-            status: 'REQUESTED',
-            driver: null,
-            deniedBy: { $ne: driver._id },
-        }).sort({ createdAt: 1 });
-
-        return Promise.all(rides.map(transformRide));
-    },
-
-    myRides: async (_args, context) => {
-        const driver = await getApprovedDriver(context);
-
-        const rides = await Ride.find({
-            driver: driver._id,
-        }).sort({ createdAt: -1 });
-
-        return Promise.all(rides.map(transformRide));
-    },
-
-    applyAsDriver: async (args, context) => {
-        const u = await requireAuth(context);
-
-        const existing = await Driver.findOne({ user: u._id });
-
-        const data = args.driverInput;
-
-        const payload = {
-            user: u._id,
-            firstName: data.firstName || u.firstName || '',
-            lastName: data.lastName || u.lastName || '',
-            phone: data.phone || u.phone || '',
-            vehicleMake: data.vehicleMake,
-            vehicleModel: data.vehicleModel,
-            vehicleColor: data.vehicleColor,
-            vehicleYear: Number(data.vehicleYear),
-            licensePlate: String(data.licensePlate).trim().toUpperCase(),
-            status: 'PENDING',
-            vehicleStatus: 'PENDING',
-            online: false,
-            deniedReason: '',
-            vehicleDeniedReason: '',
-        };
-
-        const d = existing
-            ? await Driver.findByIdAndUpdate(
-                existing._id,
-                payload,
-                { new: true, runValidators: true }
-            )
-            : await new Driver(payload).save();
-
-        return transformDriver(d);
-    },
-
-    approveDriver: async (args, context) => {
-        await requireAdmin(context);
-
-        const d = await Driver.findById(args.driverId);
-        if (!d) throw new Error('Driver not found.');
-
-        d.status = 'APPROVED';
-        d.deniedReason = '';
-        d.online = false;
-        await d.save();
-
-        return transformDriver(d);
-    },
-
-    denyDriver: async (args, context) => {
-        await requireAdmin(context);
-
-        const d = await Driver.findById(args.driverId);
-        if (!d) throw new Error('Driver not found.');
-
-        d.status = 'DENIED';
-        d.online = false;
-        d.deniedReason = String(args.reason || 'Driver application denied.');
-        await d.save();
-
-        return transformDriver(d);
-    },
-
-    approveVehicle: async (args, context) => {
-        await requireAdmin(context);
-
-        const d = await Driver.findById(args.driverId);
-        if (!d) throw new Error('Driver not found.');
-
-        d.vehicleStatus = 'APPROVED';
-        d.vehicleDeniedReason = '';
-        await d.save();
-
-        return transformDriver(d);
-    },
-
-    denyVehicle: async (args, context) => {
-        await requireAdmin(context);
-
-        const d = await Driver.findById(args.driverId);
-        if (!d) throw new Error('Driver not found.');
-
-        d.vehicleStatus = 'DENIED';
-        d.vehicleDeniedReason = String(args.reason || 'Vehicle denied.');
-        d.online = false;
-        await d.save();
-
-        return transformDriver(d);
-    },
-
-    setDriverOnline: async (args, context) => {
-        const d = await getApprovedDriver(context);
-
-        d.online = !!args.online;
-        await d.save();
-
-        return transformDriver(d);
-    },
-
-    acceptRide: async (args, context) => {
-        const driver = await getApprovedDriver(context);
-
-        const ride = await Ride.findOneAndUpdate(
-            {
-                _id: args.rideId,
-                status: 'REQUESTED',
-                driver: null,
-            },
-            {
-                $set: {
-                    driver: driver._id,
-                    status: 'ACCEPTED',
-                    updatedAt: new Date(),
-                },
-            },
-            {
-                new: true,
-            }
-        );
-
-        if (!ride) {
-            throw new Error('Ride is no longer available.');
-        }
-
-        return transformRide(ride);
-    },
-
-    rejectRide: async (args, context) => {
-        const driver = await getApprovedDriver(context);
-
-        const ride = await Ride.findOneAndUpdate(
-            {
-                _id: args.rideId,
-                status: 'REQUESTED',
-                driver: null,
-            },
-            {
-                $addToSet: { deniedBy: driver._id },
-                $set: { updatedAt: new Date() },
-            },
-            {
-                new: true,
-            }
-        );
-
-        if (!ride) {
-            throw new Error('Ride is no longer available.');
-        }
-
-        return transformRide(ride);
-    },
-
 };
 
 // Export helpers for testing
