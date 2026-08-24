@@ -200,13 +200,13 @@ const transformRide = async (r) => {
 
     const pickupAddress =
         r.pickup && typeof r.pickup === 'object'
-            ? r.pickup.address || ''
-            : r.pickup;
+            ? String(r.pickup.address || '')
+            : String(r.pickup || '');
 
     const destinationAddress =
         r.destination && typeof r.destination === 'object'
-            ? r.destination.address || ''
-            : r.destination;
+            ? String(r.destination.address || '')
+            : String(r.destination || '');
 
     return {
         ...r._doc,

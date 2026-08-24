@@ -523,6 +523,14 @@ mutation Reject($rideId: ID!) {
   }
 }`;
 
+const ARRIVE_RIDE_MUTATION = `
+mutation Arrive($rideId: ID!) {
+  arriveRide(rideId: $rideId) {
+    _id
+    status
+  }
+}`;
+
 const START_RIDE_MUTATION = `
 mutation Start($rideId: ID!) {
   startRide(rideId: $rideId) {
@@ -539,6 +547,15 @@ mutation Complete($rideId: ID!) {
     paymentStatus
   }
 }`;
+
+const CANCEL_RIDE_MUTATION = `
+mutation Cancel($rideId: ID!) {
+  cancelRide(rideId: $rideId) {
+    _id
+    status
+  }
+}`;
+
 
 const emptyEvent = {
   title: '',
@@ -871,6 +888,26 @@ function App() {
       await request(REJECT_RIDE_MUTATION, { rideId: id })
       await loadDriverPanel()
       flash('Ride declined. It remains available for other drivers.')
+    } catch (err) {
+      fail(err.message)
+    }
+  }
+
+  const arriveAssignedRide = async (id) => {
+    try {
+      await request(ARRIVE_RIDE_MUTATION, { rideId: id })
+      await loadDriverPanel()
+      flash('Marked as arrived.')
+    } catch (err) {
+      fail(err.message)
+    }
+  }
+
+  const cancelAssignedRide = async (id) => {
+    try {
+      await request(CANCEL_RIDE_MUTATION, { rideId: id })
+      await loadDriverPanel()
+      flash('Ride cancelled.')
     } catch (err) {
       fail(err.message)
     }
@@ -2030,6 +2067,25 @@ function App() {
                           </div>
                           <div className="row-action">
                             {item.status === 'ACCEPTED' && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="primary-button"
+                                  onClick={() => arriveAssignedRide(item._id)}
+                                >
+                                  Arrived
+                                </button>
+                                <button
+                                  type="button"
+                                  className="primary-button"
+                                  onClick={() => startAssignedRide(item._id)}
+                                >
+                                  Start trip
+                                </button>
+                              </>
+                            )}
+
+                            {item.status === 'DRIVER_ARRIVING' && (
                               <button
                                 type="button"
                                 className="primary-button"
@@ -2038,6 +2094,17 @@ function App() {
                                 Start trip
                               </button>
                             )}
+
+                            {item.status === 'DRIVER_ARRIVED' && (
+                              <button
+                                type="button"
+                                className="primary-button"
+                                onClick={() => startAssignedRide(item._id)}
+                              >
+                                Start trip
+                              </button>
+                            )}
+
                             {item.status === 'IN_PROGRESS' && (
                               <button
                                 type="button"
@@ -2045,6 +2112,17 @@ function App() {
                                 onClick={() => completeAssignedRide(item._id)}
                               >
                                 Complete trip
+                              </button>
+                            )}
+
+                            {item.status !== 'COMPLETED' &&
+                             item.status !== 'CANCELLED' && (
+                              <button
+                                type="button"
+                                className="danger"
+                                onClick={() => cancelAssignedRide(item._id)}
+                              >
+                                Cancel
                               </button>
                             )}
                           </div>

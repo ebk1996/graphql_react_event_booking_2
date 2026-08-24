@@ -161,7 +161,13 @@ module.exports = buildSchema(`
     licensePlate: String!
   }
 
+  type StripeConfig {
+    publishableKey: String!
+    configured: Boolean!
+  }
+
   type RootQuery {
+    stripeConfig: StripeConfig!
     events: [Event!]!
     bookings: [Booking!]!
     bookingsCount: Int!
@@ -218,8 +224,10 @@ module.exports = buildSchema(`
 
     acceptRide(rideId: ID!): Ride
     rejectRide(rideId: ID!): Ride
+    arriveRide(rideId: ID!): Ride
     startRide(rideId: ID!): Ride
     completeRide(rideId: ID!): Ride
+    cancelRide(rideId: ID!): Ride
   }
 
   schema {
