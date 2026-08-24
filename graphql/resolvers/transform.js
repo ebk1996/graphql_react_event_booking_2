@@ -1,7 +1,7 @@
 const createTransformEvent = (userResolver) => {
     return (event) => ({
         ...event._doc,
-        _id: event.id,
+        _id: event.id || event._doc._id,
 
         imageUrl: event._doc.image || '',
 

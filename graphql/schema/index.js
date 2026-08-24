@@ -82,6 +82,11 @@ module.exports = buildSchema(`
     createdAt: String!
   }
 
+  type RideCoordinates {
+    lat: Float!
+    lng: Float!
+  }
+
   type Driver {
     _id: ID!
     user: User!
@@ -92,6 +97,7 @@ module.exports = buildSchema(`
     vehicleYear: Int
     vehicleColor: String
     licensePlate: String
+    currentLocation: RideCoordinates
     rating: Float!
     totalEarnings: Float!
     completedRides: Int!
@@ -197,6 +203,7 @@ module.exports = buildSchema(`
     unreadMessageCount: Int!
 
     quoteRide(input: RideQuoteInput!): RideQuote!
+    myDriver: Driver
   }
 
   type RootMutation {
@@ -229,6 +236,11 @@ module.exports = buildSchema(`
 
     bookEvent(eventId: ID!): Booking
     cancelBooking(bookingId: ID!): Event
+
+    applyAsDriver(driverInput: DriverInput!): Driver!
+    updateDriver(driverInput: DriverInput!): Driver!
+    setDriverOnline(online: Boolean!): Driver!
+    updateDriverLocation(lat: Float!, lng: Float!): Driver!
 
   }
 
