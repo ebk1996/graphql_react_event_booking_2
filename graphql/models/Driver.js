@@ -11,8 +11,18 @@ const driverSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['PENDING', 'APPROVED', 'SUSPENDED'],
+      enum: ['PENDING', 'APPROVED', 'SUSPENDED', 'DENIED'],
       default: 'PENDING',
+    },
+
+    zipCode: {
+      type: String,
+      default: '',
+    },
+
+    denialReason: {
+      type: String,
+      default: '',
     },
 
     online: {

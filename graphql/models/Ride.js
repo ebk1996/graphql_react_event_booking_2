@@ -18,12 +18,42 @@ const rideSchema = new mongoose.Schema(
       address: String,
       lat: Number,
       lng: Number,
+      zipCode: String,
     },
 
     destination: {
       address: String,
       lat: Number,
       lng: Number,
+      zipCode: String,
+    },
+
+    pickupZip: {
+      type: String,
+      default: '',
+    },
+
+    destinationZip: {
+      type: String,
+      default: '',
+    },
+
+    offeredTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Driver',
+      default: null,
+    },
+
+    deniedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Driver',
+      },
+    ],
+
+    routeGeometry: {
+      type: [[Number]],
+      default: [],
     },
 
     distanceMiles: {
@@ -105,6 +135,21 @@ const rideSchema = new mongoose.Schema(
     },
 
     paymentAuthorizationId: {
+      type: String,
+      default: '',
+    },
+
+    paymentIntentId: {
+      type: String,
+      default: '',
+    },
+
+    paymentMethodId: {
+      type: String,
+      default: '',
+    },
+
+    stripePaymentStatus: {
       type: String,
       default: '',
     },

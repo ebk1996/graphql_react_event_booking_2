@@ -320,9 +320,7 @@ module.exports = buildSchema(`
     createRidePaymentIntent(
       pickup: RideLocationInput!
       destination: RideLocationInput!
-      distanceMiles: Float!
-      durationMinutes: Float!
-      paymentMethodId: String!
+      paymentMethodId: String
       surgeMultiplier: Float
     ): PaymentIntentResult!
 

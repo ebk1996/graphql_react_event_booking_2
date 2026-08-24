@@ -26,6 +26,8 @@
   },
   "dependencies": {
     "@apollo/client": "^4.2.12",
+    "@sentry/react": "^10.70.0",
+    "@stripe/react-stripe-js": "^6.8.2",
     "@stripe/stripe-js": "^9.14.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -38,10 +40,12 @@
     "graphql-http": "^1.22.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.33.0",
     "mongoose": "^8.19.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1",
     "react-router-dom": "^7.18.2",
     "ruru": "^2.0.0-beta.13",
     "stripe": "^22.5.0"

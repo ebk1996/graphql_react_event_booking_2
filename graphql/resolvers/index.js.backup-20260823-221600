@@ -15,14 +15,6 @@ const Driver = require('../models/Driver');
 const Ride = require('../models/Ride');
 const Card = require('../models/Card');
 const Payment = require('../models/Payment');
-const {
-    stripePublishableKey,
-    createAndConfirmPaymentIntent,
-    retrievePaymentIntent,
-    capturePaymentIntent,
-    assertIntentUsable,
-    mapPaymentStatus,
-} = require('../services/stripe');
 
 // transformEvent created after user resolver is defined; placeholder will be reassigned
 let transformEvent;
@@ -107,12 +99,6 @@ const transformBooking = (booking) => ({
 });
 
 module.exports = {
-    stripeConfig: async () => ({
-        publishableKey: stripePublishableKey(),
-        configured: Boolean(stripePublishableKey()),
-    }),
-
-
     me: async (_args, context) => {
         const currentUser = await requireAuth(
             context,
@@ -372,140 +358,6 @@ module.exports = {
         };
     },
 
-    savePaymentMethod: async (args, context) => {
-        const currentUser = await requireAuth(
-            context,
-            'Please log in to save a payment method.'
-        );
-
-        const paymentMethodId = String(
-            args.paymentMethodId || ''
-        ).trim();
-
-        if (!paymentMethodId) {
-            throw new Error('A Stripe payment method is required.');
-        }
-
-        const { customer, paymentMethod } =
-            await require('../services/stripe').attachPaymentMethod(
-                currentUser,
-                paymentMethodId
-            );
-
-        const card = paymentMethod.card;
-
-        if (!card) {
-            throw new Error('The Stripe payment method is not a card.');
-        }
-
-        const existing = await Card.findOne({
-            user: currentUser._id,
-            provider: 'stripe',
-            providerPaymentMethodId: paymentMethod.id,
-        });
-
-        if (existing) {
-            existing.providerCustomerId = customer.id;
-            existing.brand = card.brand || '';
-            existing.last4 = card.last4 || '';
-            existing.expirationMonth = card.exp_month || null;
-            existing.expirationYear = card.exp_year || null;
-
-            const saved = await existing.save();
-
-            return {
-                ...saved._doc,
-                _id: saved.id,
-                expMonth: saved.expirationMonth,
-                expYear: saved.expirationYear,
-                defaultCard: saved.isDefault,
-            };
-        }
-
-        const hasDefault = await Card.exists({
-            user: currentUser._id,
-            isDefault: true,
-        });
-
-        const saved = await new Card({
-            user: currentUser._id,
-            provider: 'stripe',
-            providerCustomerId: customer.id,
-            providerPaymentMethodId: paymentMethod.id,
-            brand: card.brand || '',
-            last4: card.last4 || '',
-            expirationMonth: card.exp_month || null,
-            expirationYear: card.exp_year || null,
-            isDefault: !hasDefault,
-        }).save();
-
-        return {
-            ...saved._doc,
-            _id: saved.id,
-            expMonth: saved.expirationMonth,
-            expYear: saved.expirationYear,
-            defaultCard: saved.isDefault,
-        };
-    },
-
-    createRidePaymentIntent: async (args, context) => {
-        const currentUser = await requireAuth(
-            context,
-            'Please log in to create a payment.'
-        );
-
-        const distanceMiles = Number(
-            args.distanceMiles ??
-            0
-        );
-
-        const durationMinutes = Number(
-            args.durationMinutes ??
-            0
-        );
-
-        const surgeMultiplier = Number(args.surgeMultiplier || 1);
-
-        if (!Number.isFinite(distanceMiles) || distanceMiles < 0) {
-            throw new Error('Invalid distance.');
-        }
-
-        if (!Number.isFinite(durationMinutes) || durationMinutes < 0) {
-            throw new Error('Invalid duration.');
-        }
-
-        if (!Number.isFinite(surgeMultiplier) || surgeMultiplier < 1) {
-            throw new Error('Invalid surge multiplier.');
-        }
-
-        const fare = calculateFare({
-            distanceMiles,
-            durationMinutes,
-            surgeMultiplier,
-        });
-
-        const paymentIntent = await createAndConfirmPaymentIntent({
-            user: currentUser,
-            amount: fare.estimatedFare,
-            paymentMethodId: args.paymentMethodId,
-            metadata: {
-                type: 'ride',
-                distanceMiles: String(fare.distanceMiles),
-                durationMinutes: String(fare.durationMinutes),
-            },
-        });
-
-        const stripeStatus = mapPaymentStatus(paymentIntent.status);
-
-        return {
-            paymentIntentId: paymentIntent.id,
-            clientSecret: paymentIntent.client_secret || '',
-            status: stripeStatus,
-            amount: fare.estimatedFare,
-            paymentStatus: stripeStatus,
-        };
-    },
-
     requestRide: async (args, context) => {
         const currentUser = await requireAuth(
             context,
@@ -528,29 +380,11 @@ module.exports = {
             throw new Error('Invalid surge multiplier.');
         }
 
-        if (!args.paymentIntentId) {
-            throw new Error('A Stripe payment authorization is required.');
-        }
-
         const fare = calculateFare({
             distanceMiles,
             durationMinutes,
             surgeMultiplier,
         });
-
-        const paymentIntent = await retrievePaymentIntent(
-            args.paymentIntentId
-        );
-
-        assertIntentUsable(
-            paymentIntent,
-            currentUser,
-            fare.estimatedFare
-        );
-
-        const stripePaymentStatus = mapPaymentStatus(
-            paymentIntent.status
-        );
 
         const ride = new Ride({
             rider: currentUser._id,
@@ -580,27 +414,10 @@ module.exports = {
             surgeMultiplier: fare.surgeMultiplier,
 
             status: 'REQUESTED',
-            paymentStatus: stripePaymentStatus,
-            paymentIntentId: paymentIntent.id,
-            stripePaymentStatus: paymentIntent.status,
+            paymentStatus: 'PENDING',
         });
 
         const saved = await ride.save();
-
-        const payment = new Payment({
-            ride: saved._id,
-            rider: currentUser._id,
-            paymentIntentId: paymentIntent.id,
-            authorizationId: paymentIntent.id,
-            stripeStatus: paymentIntent.status,
-            amount: fare.estimatedFare,
-            driverAmount: fare.driverAmount,
-            platformAmount: fare.platformAmount,
-            status: stripePaymentStatus,
-            provider: 'stripe',
-        });
-
-        await payment.save();
 
         return {
             ...saved._doc,
@@ -782,83 +599,15 @@ module.exports = {
             throw new Error('Ride must be in progress before completion.');
         }
 
-        if (!ride.paymentIntentId) {
-            throw new Error(
-                'This ride has no Stripe payment intent.'
-            );
-        }
-
-        /*
-         * Mark the ride completed first so captureRidePayment's
-         * completion requirement is satisfied.
-         */
         ride.status = 'COMPLETED';
         ride.finalFare = ride.estimatedFare;
-
-        /*
-         * IMPORTANT:
-         * Actually capture the Stripe authorization.
-         * Do NOT mark the ride CAPTURED until Stripe confirms it.
-         */
-        const paymentIntent = await capturePaymentIntent(
-            ride.paymentIntentId
-        );
-
-        const paymentStatus = mapPaymentStatus(
-            paymentIntent.status
-        );
-
-        if (paymentIntent.status !== 'succeeded') {
-            throw new Error(
-                `Stripe payment was not captured (status: ${paymentIntent.status}).`
-            );
-        }
-
-        ride.paymentStatus = paymentStatus;
-        ride.stripePaymentStatus = paymentIntent.status;
+        ride.paymentStatus = 'CAPTURED';
 
         const saved = await ride.save();
 
-        /*
-         * Record/update the payment transaction.
-         */
-        let payment = await Payment.findOne({
-            ride: saved._id,
-        });
-
-        if (!payment) {
-            payment = new Payment({
-                ride: saved._id,
-                rider: saved.rider,
-                authorizationId: paymentIntent.id,
-                paymentIntentId: paymentIntent.id,
-                stripeStatus: paymentIntent.status,
-                capturedAt: new Date(),
-                amount: saved.finalFare || saved.estimatedFare,
-                driverAmount: saved.driverAmount,
-                platformAmount: saved.platformAmount,
-                status: paymentStatus,
-                provider: 'stripe',
-            });
-        } else {
-            payment.authorizationId = paymentIntent.id;
-            payment.paymentIntentId = paymentIntent.id;
-            payment.stripeStatus = paymentIntent.status;
-            payment.status = paymentStatus;
-            payment.capturedAt = new Date();
-        }
-
-        await payment.save();
-
-        /*
-         * Only credit driver earnings after Stripe capture succeeds.
-         */
-        driver.completedRides =
-            Number(driver.completedRides || 0) + 1;
-
+        driver.completedRides = Number(driver.completedRides || 0) + 1;
         driver.totalEarnings =
-            Number(driver.totalEarnings || 0) +
-            Number(saved.driverAmount || 0);
+            Number(driver.totalEarnings || 0) + Number(saved.driverAmount || 0);
 
         await driver.save();
 
@@ -871,101 +620,6 @@ module.exports = {
                 _id: driver.id,
                 user: social.userObject(currentUser),
             },
-            createdAt: new Date(saved.createdAt).toISOString(),
-        };
-    },
-
-    captureRidePayment: async (args, context) => {
-        const currentUser = await requireAuth(
-            context,
-            'Please log in to capture the ride payment.'
-        );
-
-        const ride = await Ride.findById(args.rideId);
-
-        if (!ride) {
-            throw new Error('Ride not found.');
-        }
-
-        if (String(ride.rider) !== String(currentUser._id)) {
-            throw new Error(
-                'You are not authorized to capture this payment.'
-            );
-        }
-
-        if (!ride.paymentIntentId) {
-            throw new Error(
-                'This ride has no Stripe payment intent.'
-            );
-        }
-
-        if (ride.status !== 'COMPLETED') {
-            throw new Error(
-                'Ride must be completed before payment is captured.'
-            );
-        }
-
-        const paymentIntent = await capturePaymentIntent(
-            ride.paymentIntentId
-        );
-
-        const paymentStatus = mapPaymentStatus(
-            paymentIntent.status
-        );
-
-        ride.paymentStatus = paymentStatus;
-        ride.stripePaymentStatus = paymentIntent.status;
-
-        const saved = await ride.save();
-
-        let payment = await Payment.findOne({
-            ride: saved._id,
-        });
-
-        if (!payment) {
-            payment = new Payment({
-                ride: saved._id,
-                rider: saved.rider,
-                authorizationId: paymentIntent.id,
-                paymentIntentId: paymentIntent.id,
-                stripeStatus: paymentIntent.status,
-                capturedAt:
-                    paymentIntent.status === 'succeeded'
-                        ? new Date()
-                        : null,
-                amount: saved.finalFare || saved.estimatedFare,
-                driverAmount: saved.driverAmount,
-                platformAmount: saved.platformAmount,
-                status: paymentStatus,
-                provider: 'stripe',
-            });
-        } else {
-            payment.authorizationId = paymentIntent.id;
-            payment.paymentIntentId = paymentIntent.id;
-            payment.stripeStatus = paymentIntent.status;
-            payment.status = paymentStatus;
-            payment.capturedAt =
-                paymentIntent.status === 'succeeded'
-                    ? new Date()
-                    : null;
-        }
-
-        await payment.save();
-
-        const driver = saved.driver
-            ? await Driver.findById(saved.driver)
-            : null;
-
-        return {
-            ...saved._doc,
-            _id: saved.id,
-            rider: social.userObject(currentUser),
-            driver: driver
-                ? {
-                    ...driver._doc,
-                    _id: driver.id,
-                }
-                : null,
             createdAt: new Date(saved.createdAt).toISOString(),
         };
     },

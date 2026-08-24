@@ -72,6 +72,16 @@ const userSchema = new Schema(
         ref: 'Event',
       },
     ],
+
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
+
+    stripeCustomerId: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,

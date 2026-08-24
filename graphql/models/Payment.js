@@ -17,6 +17,21 @@ const paymentSchema = new mongoose.Schema(
 
         authorizationId: String,
 
+        paymentIntentId: {
+            type: String,
+            default: '',
+        },
+
+        stripeStatus: {
+            type: String,
+            default: '',
+        },
+
+        capturedAt: {
+            type: Date,
+            default: null,
+        },
+
         amount: {
             type: Number,
             required: true,

@@ -1834,6 +1834,37 @@ footer .brand,
 }
 
 @media (max-width: 600px) {
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .topbar .brand {
+    flex: 0 0 auto;
+  }
+
+  .topbar .account-actions {
+    display: flex;
+    flex: 0 0 auto;
+    margin-left: auto;
+    align-items: center;
+  }
+
+  .topbar .account-actions .primary-button,
+  .topbar .account-actions .outline-button {
+    display: inline-flex;
+    white-space: nowrap;
+  }
+
+  .topbar nav {
+    order: 3;
+    flex: 0 0 100%;
+    width: 100%;
+    overflow-x: auto;
+  }
+
   .hero-actions {
     flex-direction: column;
     align-items: stretch;
@@ -1852,3 +1883,324 @@ footer .brand,
   }
 }
 
+
+.payment-card {
+  margin: 24px 0;
+}
+
+.payment-card label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.stripe-card {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.stripe-card:focus-within {
+  border-color: #635bff;
+  box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.15);
+}
+
+.stripe-card {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 55px !important;
+  min-height: 55px !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  background: #ffffff !important;
+  border: 2px solid #635bff !important;
+  border-radius: 8px !important;
+  overflow: visible !important;
+}
+
+.stripe-card iframe {
+  display: block !important;
+  width: 100% !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.payment-card {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 999 !important;
+}
+
+.stripe-card,
+.stripe-card iframe {
+  pointer-events: auto !important;
+  user-select: auto !important;
+}
+
+.stripe-card {
+  position: relative !important;
+  z-index: 9999 !important;
+  isolation: isolate !important;
+  cursor: text !important;
+}
+
+.stripe-card iframe {
+  position: relative !important;
+  z-index: 10000 !important;
+  pointer-events: auto !important;
+}
+
+
+/* Stripe CardElement — force interactive input */
+.payment-card,
+.stripe-card {
+  position: relative !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+}
+
+.stripe-card {
+  min-height: 58px !important;
+  width: 100% !important;
+  display: block !important;
+  background: #fff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  padding: 16px !important;
+  box-sizing: border-box !important;
+  cursor: text !important;
+}
+
+.stripe-card iframe {
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 1001 !important;
+  width: 100% !important;
+  min-height: 28px !important;
+}
+
+.stripe-card:focus-within {
+  border-color: #635bff !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,.15) !important;
+}
+
+/* ===== HARD FIX: STRIPE IFRAME INTERACTION ===== */
+
+.quote-card:has(.stripe-card-input),
+.payment-card:has(.stripe-card-input),
+.page:has(.stripe-card-input),
+.page.reveal:has(.stripe-card-input) {
+  transform: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  pointer-events: auto !important;
+}
+
+
+
+
+.stripe-card-input {
+  all: initial !important;
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 64px !important;
+  min-height: 64px !important;
+  box-sizing: border-box !important;
+  padding: 18px 14px !important;
+  margin: 0 !important;
+  background: #fff !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  pointer-events: auto !important;
+  cursor: text !important;
+  z-index: 2147483647 !important;
+  isolation: isolate !important;
+}
+
+.stripe-card-input iframe {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  border: 0 !important;
+  outline: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  pointer-events: auto !important;
+  z-index: 2147483647 !important;
+}
+
+.stripe-card-input iframe:hover,
+.stripe-card-input iframe:focus {
+  pointer-events: auto !important;
+}
+
+.stripe-card-input:focus-within {
+  border-color: #635bff !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,.18) !important;
+}
+
+/* Kill common decorative/overlay layers around Stripe */
+
+
+.stripe-card-input {
+  position: relative !important;
+  isolation: isolate !important;
+  contain: none !important;
+  overflow: visible !important;
+  transform: translateZ(0) !important;
+}
+
+.stripe-card-input iframe {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  pointer-events: auto !important;
+  touch-action: auto !important;
+  z-index: 2147483647 !important;
+}
+
+.stripe-card-input {
+  min-height: 64px !important;
+  height: 64px !important;
+}
+
+
+/* ============================================================
+   STRIPE: ABSOLUTE INTERACTION ISOLATION
+   ============================================================ */
+
+/* Every ancestor containing Stripe must permit interaction */
+.page:has(.stripe-card),
+.page:has(.stripe-card-input),
+.page:has(.stripe-payment-container),
+.quote-card:has(.stripe-card),
+.quote-card:has(.stripe-card-input),
+.quote-card:has(.stripe-payment-container),
+.payment-card:has(.stripe-card),
+.payment-card:has(.stripe-card-input),
+.payment-card:has(.stripe-payment-container) {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  filter: none !important;
+  perspective: none !important;
+  overflow: visible !important;
+}
+
+/* Kill decorative layers that can sit over the iframe */
+.page:has(.stripe-card)::before,
+.page:has(.stripe-card)::after,
+.page:has(.stripe-card-input)::before,
+.page:has(.stripe-card-input)::after,
+.quote-card:has(.stripe-card)::before,
+.quote-card:has(.stripe-card)::after,
+
+
+/* =========================================================
+   STRIPE PAYMENT CARD — CLEAN IMPLEMENTATION
+   ========================================================= */
+
+.payment-card {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  margin: 0 0 20px 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  z-index: 20 !important;
+}
+
+.payment-card > label {
+  display: block !important;
+  position: static !important;
+  margin-bottom: 8px !important;
+  pointer-events: none !important;
+}
+
+.stripe-card,
+.stripe-card-input {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  box-sizing: border-box !important;
+  padding: 16px !important;
+  margin: 0 !important;
+
+  background: #ffffff !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+
+  pointer-events: auto !important;
+  z-index: 1000 !important;
+}
+
+.stripe-card iframe,
+.stripe-card-input iframe {
+  display: block !important;
+  position: relative !important;
+
+  width: 100% !important;
+  height: 24px !important;
+  min-height: 24px !important;
+
+  border: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  z-index: 1001 !important;
+}
+
+.stripe-card::before,
+.stripe-card::after,
+.stripe-card-input::before,
+.stripe-card-input::after {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+.stripe-card *,
+.stripe-card-input * {
+  pointer-events: auto !important;
+}
+
+.stripe-card:focus-within,
+.stripe-card-input:focus-within {
+  border-color: #635bff !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,.15) !important;
+}
