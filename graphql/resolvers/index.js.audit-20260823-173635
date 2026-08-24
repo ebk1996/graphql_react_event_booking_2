@@ -10,6 +10,7 @@ const { jwtSecret, TOKEN_EXPIRATION_HOURS } = require('../../config/auth');
 const social = require('./social');
 const { Comment, Message } = require('../models/Social');
 const AppNotification = require('../models/AppNotification');
+const Driver = require('../models/Driver');
 const { calculateFare } = require('../services/fare');
 
 // transformEvent created after user resolver is defined; placeholder will be reassigned
@@ -300,10 +301,6 @@ module.exports = {
             currentUser.zipCode = zip;
         }
 
-        if (args.bio !== undefined) {
-            currentUser.bio = String(args.bio).trim();
-        }
-
         if (args.profileImage !== undefined) {
             currentUser.profileImage = String(args.profileImage).trim();
         }
@@ -385,7 +382,7 @@ module.exports = {
                 price: +args.eventInput.price,
                 date: new Date(args.eventInput.date),
                 zipCode,
-                image: String(args.eventInput.imageUrl || '').trim(),
+                image: String(args.eventInput.image || '').trim(),
                 creator: creator._id,
             });
             const result = await event.save();
@@ -411,8 +408,8 @@ module.exports = {
             found.price = +args.eventInput.price;
             found.date = new Date(args.eventInput.date);
 
-            if (args.eventInput.imageUrl !== undefined) {
-                found.image = String(args.eventInput.imageUrl || '').trim();
+            if (args.eventInput.image !== undefined) {
+                found.image = String(args.eventInput.image || '').trim();
             }
 
             const result = await found.save();

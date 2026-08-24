@@ -17,16 +17,6 @@ module.exports = buildSchema(`
     updatedAt: String!
   }
 
-  type AppNotification {
-    _id: ID!
-    type: String!
-    message: String!
-    sender: User
-    recipient: User
-    read: Boolean!
-    createdAt: String!
-  }
-
   type Notification {
     _id: ID!
     type: String!
@@ -187,7 +177,6 @@ module.exports = buildSchema(`
     bookings: [Booking!]!
     hostBookings: [HostBooking!]!
     notifications: [Notification!]!
-    appNotifications: [AppNotification!]!
     bookingsCount: Int!
 
     profile(userId: ID!): User!
@@ -196,7 +185,13 @@ module.exports = buildSchema(`
     conversation(userId: ID!): [Message!]!
     unreadMessageCount: Int!
 
+    myDriver: Driver
+    availableDrivers: [Driver!]!
+    myRides: [Ride!]!
+    driverRides: [Ride!]!
+
     quoteRide(input: RideQuoteInput!): RideQuote!
+    myCards: [Card!]!
   }
 
   type RootMutation {
@@ -218,18 +213,40 @@ module.exports = buildSchema(`
     followUser(userId: ID!): User!
     unfollowUser(userId: ID!): User!
 
-    createComment(eventId: ID!, text: String!): Comment!
+    addComment(eventId: ID!, text: String!): Comment!
     deleteComment(commentId: ID!): Boolean!
-    likeComment(commentId: ID!): Comment!
-    unlikeComment(commentId: ID!): Comment!
+    toggleCommentLike(commentId: ID!): Comment!
 
     sendMessage(userId: ID!, text: String!): Message!
     markMessageRead(messageId: ID!): Message!
-    markNotificationRead(notificationId: ID!): AppNotification!
 
     bookEvent(eventId: ID!): Booking
     cancelBooking(bookingId: ID!): Event
 
+    registerDriver(input: DriverInput!): Driver!
+    setDriverOnline(online: Boolean!): Driver!
+    acceptRide(rideId: ID!): Ride!
+    updateRideStatus(rideId: ID!, status: String!): Ride!
+
+    requestRide(
+      pickup: RideLocationInput!
+      destination: RideLocationInput!
+      distanceMiles: Float!
+      durationMinutes: Float!
+      surgeMultiplier: Float
+      paymentCardId: ID!
+    ): Ride!
+
+    saveCard(
+      paymentMethodToken: String!
+      brand: String!
+      last4: String!
+      expMonth: Int!
+      expYear: Int!
+      defaultCard: Boolean
+    ): Card!
+
+    deleteCard(cardId: ID!): Boolean!
   }
 
   schema {
