@@ -1,0 +1,256 @@
+const { buildSchema } = require('graphql');
+
+module.exports = buildSchema(`
+  type Booking {
+    _id: ID!
+    event: Event!
+    user: User!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type HostBooking {
+    _id: ID!
+    event: Event!
+    user: User!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type Notification {
+    _id: ID!
+    type: String!
+    message: String!
+    booking: Booking
+    event: Event
+    user: User
+    createdAt: String!
+  }
+
+  type Event {
+    _id: ID!
+    title: String!
+    description: String!
+    price: Float!
+    date: String!
+    zipCode: String!
+    imageUrl: String
+    creator: User!
+  }
+
+  type User {
+    _id: ID!
+    firstName: String
+    lastName: String
+    phone: String
+    zipCode: String!
+    email: String!
+    password: String
+    bio: String
+    profileImage: String
+    followerCount: Int!
+    followingCount: Int!
+    createdEvents: [Event!]
+  }
+
+  type Comment {
+    _id: ID!
+    text: String!
+    event: Event!
+    user: User!
+    likeCount: Int!
+    likedByMe: Boolean!
+    createdAt: String!
+  }
+
+  type Message {
+    _id: ID!
+    sender: User!
+    recipient: User!
+    text: String!
+    read: Boolean!
+    createdAt: String!
+  }
+
+  type Driver {
+    _id: ID!
+    user: User!
+    status: String!
+    online: Boolean!
+    vehicleMake: String
+    vehicleModel: String
+    vehicleYear: Int
+    vehicleColor: String
+    licensePlate: String
+    rating: Float!
+    totalEarnings: Float!
+    completedRides: Int!
+  }
+
+  type Ride {
+    _id: ID!
+    rider: User!
+    driver: Driver
+    distanceMiles: Float!
+    durationMinutes: Float!
+    estimatedFare: Float!
+    finalFare: Float
+    driverAmount: Float!
+    platformAmount: Float!
+    surgeMultiplier: Float!
+    status: String!
+    paymentStatus: String!
+    createdAt: String!
+  }
+
+  type RideQuote {
+    distanceMiles: Float!
+    durationMinutes: Float!
+    estimatedFare: Float!
+    driverAmount: Float!
+    platformAmount: Float!
+  }
+
+  type Card {
+    _id: ID!
+    brand: String!
+    last4: String!
+    expMonth: Int!
+    expYear: Int!
+    defaultCard: Boolean!
+  }
+
+  type AuthData {
+    userId: ID!
+    email: String!
+    token: String!
+    tokenExpiration: Int!
+  }
+
+  input UserInput {
+    firstName: String
+    lastName: String
+    phone: String
+    zipCode: String!
+    email: String!
+    password: String!
+  }
+
+  input LoginInput {
+    email: String!
+    password: String!
+  }
+
+  input EventInput {
+    title: String!
+    description: String!
+    price: Float!
+    date: String!
+    zipCode: String!
+    imageUrl: String
+  }
+
+  input RideLocationInput {
+    address: String!
+    lat: Float!
+    lng: Float!
+  }
+
+  input RideQuoteInput {
+    pickup: RideLocationInput!
+    destination: RideLocationInput!
+    distanceMiles: Float!
+    durationMinutes: Float!
+    surgeMultiplier: Float
+  }
+
+  input DriverInput {
+    vehicleMake: String!
+    vehicleModel: String!
+    vehicleYear: Int!
+    vehicleColor: String!
+    licensePlate: String!
+  }
+
+  type RootQuery {
+    events: [Event!]!
+    bookings: [Booking!]!
+    hostBookings: [HostBooking!]!
+    notifications: [Notification!]!
+    bookingsCount: Int!
+
+    profile(userId: ID!): User!
+    comments(eventId: ID!): [Comment!]!
+    myMessages: [Message!]!
+    conversation(userId: ID!): [Message!]!
+    unreadMessageCount: Int!
+
+    myDriver: Driver
+    availableDrivers: [Driver!]!
+    myRides: [Ride!]!
+    driverRides: [Ride!]!
+
+    quoteRide(input: RideQuoteInput!): RideQuote!
+    myCards: [Card!]!
+  }
+
+  type RootMutation {
+    createEvent(eventInput: EventInput): Event
+    updateEvent(eventId: ID!, eventInput: EventInput): Event
+    deleteEvent(eventId: ID!): Event
+
+    createUser(userInput: UserInput): User
+    login(loginInput: LoginInput!): AuthData!
+
+    updateProfile(
+      firstName: String
+      lastName: String
+      phone: String
+      bio: String
+      profileImage: String
+    ): User!
+
+    followUser(userId: ID!): User!
+    unfollowUser(userId: ID!): User!
+
+    addComment(eventId: ID!, text: String!): Comment!
+    deleteComment(commentId: ID!): Boolean!
+    toggleCommentLike(commentId: ID!): Comment!
+
+    sendMessage(userId: ID!, text: String!): Message!
+    markMessageRead(messageId: ID!): Message!
+
+    bookEvent(eventId: ID!): Booking
+    cancelBooking(bookingId: ID!): Event
+
+    registerDriver(input: DriverInput!): Driver!
+    setDriverOnline(online: Boolean!): Driver!
+    acceptRide(rideId: ID!): Ride!
+    updateRideStatus(rideId: ID!, status: String!): Ride!
+
+    requestRide(
+      pickup: RideLocationInput!
+      destination: RideLocationInput!
+      distanceMiles: Float!
+      durationMinutes: Float!
+      surgeMultiplier: Float
+      paymentCardId: ID!
+    ): Ride!
+
+    saveCard(
+      paymentMethodToken: String!
+      brand: String!
+      last4: String!
+      expMonth: Int!
+      expYear: Int!
+      defaultCard: Boolean
+    ): Card!
+
+    deleteCard(cardId: ID!): Boolean!
+  }
+
+  schema {
+    query: RootQuery
+    mutation: RootMutation
+  }
+`);
