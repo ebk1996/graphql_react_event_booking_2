@@ -344,90 +344,46 @@ function App() {
     }
   }
 
-  useEffect(() => {
-    const elements = document.querySelectorAll(
-      'main > nav, main > header, main > section, main > .notice, .event-card, .booking-row, .host form'
-    )
-
-    elements.forEach((element, index) => {
-      element.classList.add('scroll-reveal')
-      element.style.setProperty('--reveal-delay', `${Math.min(index * 35, 280)}ms`)
-    })
-
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible')
-            observer.unobserve(entry.target)
-          }
-        })
-      },
-      {
-        threshold: 0.08,
-        rootMargin: '0px 0px -50px 0px',
-      }
-    )
-
-    elements.forEach(element => observer.observe(element))
-
-    return () => observer.disconnect()
-  }, [])
-
   return <main>
     <section className="seo-intro">
-      <div className="seo-copy">
-        <p className="eyebrow">ONE PLATFORM. EVERY EVENT.</p>
+      <h1>Find Events in Your ZIP Code</h1>
 
-        <h2>Find events in your ZIP code.</h2>
+      <p>
+        Discover events happening near you. Find local events, college
+        events, university activities, fraternity and sorority events,
+        student organization activities, clubs, meetups, and community
+        events based on your ZIP code.
+      </p>
 
-        <p className="seo-lead">
-          Event Booking makes it simple to discover what's happening nearby
-          and gives organizations and businesses an easy way to promote their
-          events to the people who matter.
-        </p>
+      <h2>College & University Events</h2>
 
-        <div className="marketing-grid">
-          <article>
-            <span className="marketing-icon">01</span>
-            <h3>For Students</h3>
-            <p>
-              Discover college events, campus activities, clubs, meetups,
-              networking opportunities, parties, and local experiences near you.
-            </p>
-          </article>
+      <p>
+        Find events hosted by colleges, universities, student organizations,
+        campus groups, and student clubs. Discover activities happening
+        around your campus and in your local community.
+      </p>
 
+      <h2>Fraternity & Sorority Events</h2>
 
+      <p>
+        Fraternities and sororities can publish events and connect with
+        students in their local area. Discover Greek life events,
+        fundraisers, social events, mixers, and community activities.
+      </p>
 
-          <article>
-            <span className="marketing-icon">03</span>
-            <h3>For Clubs & Organizations</h3>
-            <p>
-              Put your organization in front of people looking for something
-              to do. Publish events and make your next gathering easier to find.
-            </p>
-          </article>
+      <h2>Clubs & Student Organizations</h2>
 
-          <article>
-            <span className="marketing-icon">04</span>
-            <h3>For Businesses</h3>
-            <p>
-              Restaurants, venues, nonprofits, entrepreneurs, and local
-              businesses can promote events and connect with customers in
-              their community.
-            </p>
-          </article>
-        </div>
+      <p>
+        Find clubs, student organizations, meetups, networking events,
+        social activities, and community gatherings near you.
+      </p>
 
-        <div className="seo-callout">
-          <strong>Have something happening?</strong>
-          <span>
-            Create an event and get it in front of people searching for events
-            in your area.
-          </span>
-          <a href="#host">Host an event →</a>
-        </div>
-      </div>
+      <h2>Find Local Events Near You</h2>
+
+      <p>
+        Enter your ZIP code to discover events in your area. Event organizers
+        can publish events and reach people looking for things to do nearby.
+      </p>
     </section>
 
     <nav>

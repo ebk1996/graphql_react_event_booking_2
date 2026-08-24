@@ -7,11 +7,6 @@ const Notification = require('../../models/notification');
 const { isValidObjectId, ensureValidObjectId, ensureOwner } = require('./helpers');
 const { createTransformEvent } = require('./transform');
 const { jwtSecret, TOKEN_EXPIRATION_HOURS } = require('../../config/auth');
-const social = require('./social');
-const { Comment, Message } = require('../models/Social');
-const AppNotification = require('../models/AppNotification');
-const Driver = require('../models/Driver');
-const { calculateFare } = require('../services/fare');
 
 // transformEvent created after user resolver is defined; placeholder will be reassigned
 let transformEvent;
@@ -96,90 +91,6 @@ const transformBooking = (booking) => ({
 });
 
 module.exports = {
-    me: async (_args, context) => {
-        const currentUser = await requireAuth(
-            context,
-            'Please log in to continue.'
-        );
-
-        return social.userObject(currentUser);
-    },
-
-    user: async (args) => {
-        const foundUser = await User.findById(args.userId);
-
-        if (!foundUser) {
-            throw new Error('User not found.');
-        }
-
-        return social.userObject(foundUser);
-    },
-
-    users: async () => {
-        const users = await User.find({})
-            .select('-password')
-            .sort({ createdAt: -1 });
-
-        return users.map(social.userObject);
-    },
-
-    comments: async (args) => {
-        return social.createCommentQuery(args);
-    },
-
-    messages: async (args, context) => {
-        return social.messagesQuery(args, context);
-    },
-
-    unreadMessageCount: async (args, context) => {
-        return social.unreadMessageCount(args, context);
-    },
-
-    appNotifications: async (_args, context) => {
-        const user = await requireAuth(
-            context,
-            'Please log in to see notifications.'
-        );
-
-        const notifications = await AppNotification.find({
-            recipient: user._id,
-        })
-            .populate('sender')
-            .sort({ createdAt: -1 });
-
-        return notifications.map(notification => ({
-            ...notification._doc,
-            _id: notification.id,
-            sender: notification.sender
-                ? social.userObject(notification.sender)
-                : null,
-            createdAt: new Date(notification.createdAt).toISOString(),
-        }));
-    },
-
-
-    quoteRide: async (args) => {
-        const {
-            distanceMiles,
-            durationMinutes,
-            surgeMultiplier = 1,
-        } = args.input;
-
-        const fare = calculateFare({
-            distanceMiles,
-            durationMinutes,
-            surgeMultiplier,
-        });
-
-        return {
-            distanceMiles: fare.distanceMiles,
-            durationMinutes: fare.durationMinutes,
-            estimatedFare: fare.estimatedFare,
-            driverAmount: fare.driverAmount,
-            platformAmount: fare.platformAmount,
-        };
-    },
-
     events: async (_args, context) => {
         try {
             const currentUser = await requireAuth(
@@ -272,101 +183,6 @@ module.exports = {
             throw err;
         }
     },
-
-    updateProfile: async (args, context) => {
-        const currentUser = await requireAuth(
-            context,
-            'Please log in to update your profile.'
-        );
-
-        if (args.firstName !== undefined) {
-            currentUser.firstName = String(args.firstName).trim();
-        }
-
-        if (args.lastName !== undefined) {
-            currentUser.lastName = String(args.lastName).trim();
-        }
-
-        if (args.phone !== undefined) {
-            currentUser.phone = String(args.phone).trim();
-        }
-
-        if (args.zipCode !== undefined) {
-            const zip = String(args.zipCode).trim();
-
-            if (!/^\\d{5}$/.test(zip)) {
-                throw new Error('ZIP code must be exactly 5 digits.');
-            }
-
-            currentUser.zipCode = zip;
-        }
-
-        if (args.profileImage !== undefined) {
-            currentUser.profileImage = String(args.profileImage).trim();
-        }
-
-        const saved = await currentUser.save();
-
-        return social.userObject(saved);
-    },
-
-    followUser: async (args, context) => {
-        return social.followUser(args, context);
-    },
-
-    unfollowUser: async (args, context) => {
-        return social.unfollowUser(args, context);
-    },
-
-    createComment: async (args, context) => {
-        return social.createComment(args, context);
-    },
-
-    deleteComment: async (args, context) => {
-        return social.deleteComment(args, context);
-    },
-
-    likeComment: async (args, context) => {
-        return social.likeComment(args, context);
-    },
-
-    unlikeComment: async (args, context) => {
-        return social.unlikeComment(args, context);
-    },
-
-    sendMessage: async (args, context) => {
-        return social.sendMessage(args, context);
-    },
-
-    markMessageRead: async (args, context) => {
-        return social.markMessageRead(args, context);
-    },
-
-    markNotificationRead: async (args, context) => {
-        const user = await requireAuth(
-            context,
-            'Please log in to continue.'
-        );
-
-        const notification = await AppNotification.findOne({
-            _id: args.notificationId,
-            recipient: user._id,
-        });
-
-        if (!notification) {
-            throw new Error('Notification not found.');
-        }
-
-        notification.read = true;
-        await notification.save();
-
-        return {
-            ...notification._doc,
-            _id: notification.id,
-            createdAt: new Date(notification.createdAt).toISOString(),
-        };
-    },
-
     createEvent: async (args, context) => {
         try {
             const creator = await requireAuth(context, 'Please log in before creating an event.');
@@ -382,7 +198,6 @@ module.exports = {
                 price: +args.eventInput.price,
                 date: new Date(args.eventInput.date),
                 zipCode,
-                image: String(args.eventInput.image || '').trim(),
                 creator: creator._id,
             });
             const result = await event.save();
@@ -407,11 +222,6 @@ module.exports = {
             found.description = args.eventInput.description;
             found.price = +args.eventInput.price;
             found.date = new Date(args.eventInput.date);
-
-            if (args.eventInput.image !== undefined) {
-                found.image = String(args.eventInput.image || '').trim();
-            }
-
             const result = await found.save();
 
             return transformEvent(result);

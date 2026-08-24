@@ -24,11 +24,6 @@ const eventSchema = new Schema({
     trim: true,
     match: /^\d{5}$/,
   },
-  image: {
-    type: String,
-    default: '',
-    trim: true,
-  },
   creator: {
     type: Schema.Types.ObjectId,
     ref: 'User',
